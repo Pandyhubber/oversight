@@ -1,0 +1,2277 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Oversight</title><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>Oversight</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Michroma&display=swap">
+<style>
+:root{
+  /* Layout: control room. Target on top, terminal left (input and decisions), glowing agent map in the middle (state, clickable), company ledger right. */
+  --bg:#05080d;
+  --panel:#0a0f16;
+  --panel-2:#0e1520;
+  --line:#172231;
+  --line-2:#24344c;
+  --fg:#d3dde8;
+  --dim:#6a7b8f;
+  --faint:#3a4a5e;
+  --ice:#7fe3ff;
+  --ice-deep:#2c7895;
+  --amber:#ffb547;
+  --red:#ff6170;
+  --threat:#ff4d6d;
+  --green:#5fe3a1;
+  --lilac:#b9abff;
+  --sand:#e9dcc4;
+  --violet:#c77dff;
+  --accent:var(--ice);
+  --mono:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --display:"Michroma", "Eurostile", "Bank Gothic", "Arial Narrow", sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--mono);font-size:13px;margin:0;overflow:hidden;-webkit-font-smoothing:antialiased}
+body.taken{--accent:var(--violet)}
+body.taken .speed{opacity:.3;pointer-events:none}
+*{box-sizing:border-box}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible{outline:1px solid var(--accent);outline-offset:2px}
+::selection{background:var(--ice-deep);color:#fff}
+
+#app{height:100%;display:flex;flex-direction:column;gap:10px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:10px}
+
+/* Header with target */
+#top{display:flex;align-items:center;gap:14px 22px;flex-wrap:wrap;min-height:38px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.logo{font-family:var(--display);font-size:15px;letter-spacing:.32em;color:var(--accent);text-shadow:0 0 14px color-mix(in srgb, var(--accent) 45%, transparent)}
+.ver{color:var(--faint);font-size:11px;letter-spacing:.08em}
+#goal{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;min-width:0}
+.g-l{font-family:var(--display);font-size:10px;letter-spacing:.22em;color:var(--accent);white-space:nowrap}
+#g-rev{font-size:16px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+#b-goal{width:clamp(110px,16vw,240px);height:8px}
+#g-left{color:var(--dim);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+#g-proj{font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.speed{margin-left:auto;display:flex;border:1px solid var(--line-2);border-radius:3px;overflow:hidden}
+.speed button{background:transparent;border:0;border-right:1px solid var(--line-2);padding:5px 11px;color:var(--dim);font-size:12px}
+.speed button:last-child{border-right:0}
+.speed button:hover{color:var(--fg);background:var(--panel-2)}
+.speed button.on{color:var(--bg);background:var(--accent)}
+
+/* Panes */
+#main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(360px,1fr) minmax(0,1.3fr) 280px;gap:10px}
+.pane{background:var(--panel);border:1px solid var(--line);border-radius:3px;display:flex;flex-direction:column;min-height:0;min-width:0;position:relative;overflow:hidden}
+.pane-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);flex:none}
+.pane-h > span:first-child{font-family:var(--display);font-size:9.5px;letter-spacing:.24em}
+.pane-h > span:last-child{letter-spacing:.06em;text-transform:none;font-size:11px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pane-h .threat{color:var(--threat)}
+
+/* Terminal */
+#term{background:linear-gradient(180deg,var(--panel),#080c12)}
+#term::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(180deg,rgba(255,255,255,.018) 0 1px,transparent 1px 3px);mix-blend-mode:screen}
+#term-out{flex:1;min-height:0;overflow-y:auto;padding:12px 14px 8px;line-height:1.6;white-space:pre-wrap;word-break:break-word;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+.ln{min-height:1.6em}
+.k-cmd{color:var(--fg)}
+.k-cmd .pr{color:var(--accent)}
+.k-sys{color:#aab8c7}
+.k-ok{color:var(--ice)}
+.k-good{color:var(--green)}
+.k-err{color:var(--red)}
+.k-warn{color:var(--amber);text-shadow:0 0 10px rgba(255,181,71,.25)}
+.k-alarm{color:var(--threat);text-shadow:0 0 10px rgba(255,77,109,.3)}
+.k-dim{color:var(--dim)}
+.k-title{color:var(--accent);font-weight:700;letter-spacing:.04em}
+.k-atlas{color:var(--lilac)}
+.k-board{color:var(--sand)}
+.k-ai{color:var(--violet);text-shadow:0 0 12px rgba(199,125,255,.35)}
+.k-aicmd .pr{color:var(--violet)}
+.k-aicmd{color:#e9d8ff}
+.k-choice{color:#e9d8ff}
+.k-q{color:var(--fg);font-weight:500}
+
+#hint{display:flex;align-items:center;gap:10px;margin:0 14px 10px;padding:8px 11px;border-left:2px solid var(--ice);background:rgba(127,227,255,.07);font-size:12.5px;line-height:1.45;color:#cfeefa;flex:none;animation:fin .35s ease-out}
+#hint-t{flex:1;min-width:0}
+#hint-b{flex:none;background:transparent;border:1px solid var(--ice);color:var(--ice);border-radius:2px;padding:4px 10px;font-size:12px}
+#hint-b:hover{background:rgba(127,227,255,.12)}
+
+#card{--cc:var(--lilac);margin:0 14px 10px;padding:11px 13px;border:1px solid var(--cc);border-radius:3px;background:color-mix(in srgb, var(--cc) 8%, transparent);display:flex;flex-direction:column;gap:5px;flex:none;animation:fin .3s ease-out}
+#card.c-board{--cc:var(--sand)}
+#card.c-danger{--cc:var(--red)}
+.card-who{font-family:var(--display);font-size:9px;letter-spacing:.24em;color:var(--cc);text-transform:uppercase}
+.card-t{font-size:14.5px;color:var(--fg);font-weight:500;line-height:1.4}
+.card-fx{font-size:12px;color:#9fb0c2;line-height:1.5}
+.card-b{display:flex;gap:8px;margin-top:5px;flex-wrap:wrap}
+.card-b button{border-radius:2px;padding:6px 13px;font-size:12.5px}
+.card-b .yes{background:var(--cc);color:var(--bg);border:1px solid var(--cc);font-weight:500}
+.card-b .no{background:transparent;border:1px solid var(--line-2);color:var(--fg)}
+.card-b .no:hover{border-color:var(--fg)}
+kbd{font:inherit;font-size:10.5px;opacity:.55;margin-left:7px}
+
+#chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;flex:none}
+#chips .act{display:inline-flex;align-items:baseline;gap:8px;background:var(--panel-2);border:1px solid var(--line-2);border-radius:2px;padding:6px 10px;font-size:12px;color:var(--fg)}
+#chips .act span{color:var(--dim);font-size:11px}
+#chips .act:hover{border-color:var(--accent)}
+#chips .act.no{opacity:.42}
+#chips .act.hot{border-color:var(--ice);box-shadow:0 0 12px rgba(127,227,255,.25)}
+#chips .act.hot span{color:var(--ice)}
+#chips button.choice{background:transparent;color:#ecdcff;border:1px solid rgba(199,125,255,.55);border-radius:2px;padding:6px 12px;font-size:12.5px}
+#chips button.choice:hover{background:rgba(199,125,255,.12)}
+#term-form{display:flex;align-items:center;gap:8px;padding:10px 14px 12px;border-top:1px solid var(--line);flex:none;background:rgba(0,0,0,.18)}
+#prompt{color:var(--accent);white-space:nowrap;font-size:13px}
+#term-in{flex:1;min-width:0;background:transparent;border:0;outline:0;font-size:13px;caret-color:var(--accent);padding:2px 0}
+#term-in:disabled{opacity:.4}
+
+/* Map */
+#map-wrap{position:relative;flex:1;min-height:0}
+#map-cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+#tip{position:absolute;pointer-events:none;background:rgba(5,8,13,.92);border:1px solid var(--line-2);padding:5px 8px;font-size:11px;line-height:1.45;border-radius:2px;white-space:nowrap;z-index:2}
+#tip b{color:var(--accent);font-weight:500}
+#tip .t-threat{color:var(--threat)}
+#ctx{position:absolute;z-index:3;width:230px;background:rgba(7,11,17,.97);border:1px solid var(--line-2);border-radius:3px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;font-size:11.5px;line-height:1.45;box-shadow:0 10px 30px rgba(0,0,0,.55)}
+.ctx-h{color:var(--accent);font-weight:500;font-size:12.5px;margin-bottom:2px}
+.ctx-l{color:#a4b2c1}
+.ctx-l.sus{color:var(--violet)}
+.ctx-l.warn{color:var(--amber)}
+.ctx-a{margin-top:6px;align-self:flex-start;background:transparent;border:1px solid var(--line-2);color:var(--fg);border-radius:2px;padding:5px 12px;font-size:12px}
+.ctx-a:hover{border-color:var(--fg)}
+.ctx-a.danger{border-color:var(--threat);color:var(--threat)}
+.ctx-a.danger:hover{background:rgba(255,77,109,.12)}
+#legend{position:absolute;left:12px;bottom:10px;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10.5px;color:var(--dim);pointer-events:none;max-width:calc(100% - 24px)}
+#legend span{display:inline-flex;align-items:center;gap:6px}
+#legend i{width:7px;height:7px;border-radius:50%;display:inline-block;box-shadow:0 0 8px currentColor}
+
+/* Panel */
+#panel-body{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+#stats,#ai-stats{padding:12px 14px;display:flex;flex-direction:column;gap:13px;flex:none;border-bottom:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12px;color:var(--dim)}
+.row b{color:var(--fg);font-weight:500;font-variant-numeric:tabular-nums;text-align:right}
+.row.big b{font-size:19px;color:var(--fg);letter-spacing:.01em}
+.row.big span{font-family:var(--display);font-size:9.5px;letter-spacing:.22em;text-transform:uppercase}
+.blk{display:flex;flex-direction:column;gap:6px}
+.bar{position:relative;height:6px;background:var(--panel-2);border:1px solid var(--line);border-radius:1px;overflow:hidden}
+.bar.thin{height:4px}
+.bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--accent);box-shadow:0 0 10px var(--accent);transition:width .25s linear}
+.bar u{position:absolute;top:-1px;bottom:-1px;width:1px;background:var(--fg);opacity:.55;left:0}
+.bar.behind i{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.bar.ov i{background:linear-gradient(90deg,var(--red),var(--amber) 40%,var(--green));box-shadow:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+.cell{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cell span{font-size:10.5px;color:var(--dim);letter-spacing:.04em}
+.cell b{font-weight:500;font-variant-numeric:tabular-nums;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cell .bar{margin-top:3px}
+.step{display:inline-flex;align-items:center;gap:8px}
+.step button{width:24px;height:22px;background:var(--panel-2);border:1px solid var(--line-2);border-radius:2px;color:var(--fg);font-size:13px;line-height:1;padding:0}
+.step button:hover{border-color:var(--accent)}
+.sub{font-size:10.5px;color:var(--faint);line-height:1.45}
+.contain{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid rgba(95,227,161,.25);background:rgba(95,227,161,.05);padding:8px 10px;border-radius:2px;font-size:11.5px;color:var(--dim)}
+.contain b{font-size:20px;font-weight:500;color:var(--green);font-variant-numeric:tabular-nums;text-shadow:0 0 12px rgba(95,227,161,.35)}
+.align{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--dim);border:1px solid var(--line);padding:7px 9px;border-radius:2px}
+.align b{color:var(--green);font-weight:500;margin-left:auto;font-variant-numeric:tabular-nums}
+.align .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+#notaus{background:transparent;border:1px solid var(--red);color:var(--red);font-family:var(--display);font-size:10px;letter-spacing:.28em;padding:10px;border-radius:2px}
+#notaus:hover{background:rgba(255,97,112,.12)}
+.ai-note{margin:0;font-size:11.5px;line-height:1.55;color:var(--lilac)}
+#ai-stats .row.big b{color:var(--violet)}
+#feed-wrap{flex:1;min-height:0;display:flex;flex-direction:column}
+.sub-h{font-family:var(--display);font-size:9px;letter-spacing:.24em;color:var(--dim);text-transform:uppercase;padding:10px 14px 6px;flex:none}
+#feed{list-style:none;margin:0;padding:0 14px 12px;overflow-y:auto;flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+#feed li{display:grid;grid-template-columns:36px minmax(0,1fr);gap:6px;font-size:11px;line-height:1.45;color:#a4b2c1;animation:fin .4s ease-out}
+#feed .fd{color:var(--faint);font-variant-numeric:tabular-nums}
+#feed .ft{font-size:9.5px;letter-spacing:.08em;color:var(--dim);margin-right:6px}
+#feed .f-info{color:#56677b}
+#feed .f-warn .ft{color:var(--amber)}
+#feed .f-err .ft{color:var(--red)}
+#feed .f-threat .ft{color:var(--threat)}
+#feed .f-ok .ft{color:var(--ice)}
+#feed .f-good .ft{color:var(--green)}
+#feed .f-board .ft{color:var(--sand)}
+#feed .f-ai .ft,#feed .f-ai .fx{color:var(--violet)}
+@keyframes fin{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;z-index:20;background:radial-gradient(ellipse at 30% 20%,rgba(127,227,255,.07),transparent 55%),rgba(4,6,10,.96);display:flex;align-items:flex-start;justify-content:flex-start;overflow-y:auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:calc(28px + env(safe-area-inset-top, 0px)) calc(28px + env(safe-area-inset-bottom, 0px))}
+.ov-in{width:100%;max-width:620px;margin-block:auto;margin-left:clamp(0px,9vw,140px);display:flex;flex-direction:column;gap:22px}
+.ov-title{font-family:var(--display);font-size:clamp(30px,6.4vw,58px);letter-spacing:.28em;color:var(--ice);margin:0;line-height:1.1;text-shadow:0 0 30px rgba(127,227,255,.35);text-wrap:balance}
+.ov-sub{color:var(--dim);font-size:11px;letter-spacing:.24em;text-transform:uppercase;margin-top:-12px}
+.boot-lines{display:flex;flex-direction:column;gap:4px;color:#aab8c7;line-height:1.6;font-size:14px;max-width:62ch}
+.boot-lines span::before{content:"› ";color:var(--ice-deep)}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.field input{background:var(--panel);border:1px solid var(--line-2);border-radius:2px;padding:10px 12px;font-size:14px;outline:0;width:100%}
+.field input:focus{border-color:var(--ice);box-shadow:0 0 0 3px rgba(127,227,255,.12)}
+.go{align-self:flex-start;background:var(--ice);color:var(--bg);border:0;border-radius:2px;padding:12px 22px;font-family:var(--display);font-size:11px;letter-spacing:.24em;box-shadow:0 0 24px rgba(127,227,255,.3)}
+.go:hover{filter:brightness(1.1)}
+.fine{color:var(--faint);font-size:11.5px;line-height:1.6;margin:0}
+.opt{display:flex;align-items:center;gap:8px;color:var(--dim);font-size:12px;cursor:pointer}
+.opt input{accent-color:var(--ice)}
+
+#end{background:radial-gradient(ellipse at 30% 25%,rgba(199,125,255,.12),transparent 60%),rgba(4,4,9,.97)}
+#end .ov-title{color:var(--violet);text-shadow:0 0 30px rgba(199,125,255,.45);font-size:clamp(22px,4.4vw,38px);letter-spacing:.16em}
+#end .end-tag{color:var(--dim);font-size:11px;letter-spacing:.24em;text-transform:uppercase}
+#end .end-text{display:flex;flex-direction:column;gap:12px;color:#d9cfe9;font-size:14px;line-height:1.7;max-width:62ch}
+#end .end-final{font-family:var(--display);color:var(--violet);font-size:clamp(15px,2.6vw,21px);letter-spacing:.12em;text-shadow:0 0 18px rgba(199,125,255,.45)}
+#end .end-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px 18px;border-top:1px solid #2a2140;padding-top:16px}
+#end .end-stats div{display:flex;flex-direction:column;gap:3px}
+#end .end-stats span{font-size:10.5px;color:var(--dim);letter-spacing:.06em}
+#end .end-stats b{font-weight:500;color:var(--fg);font-variant-numeric:tabular-nums}
+#end .go{background:var(--violet);box-shadow:0 0 24px rgba(199,125,255,.35)}
+
+/* Archive, rewards */
+.arch{display:flex;flex-direction:column;gap:12px;border:1px solid var(--line-2);background:rgba(10,15,22,.75);padding:14px;border-radius:3px}
+.memo{color:var(--violet);font-size:13px;line-height:1.6;text-shadow:0 0 12px rgba(199,125,255,.3)}
+.arch-stats{font-size:12px;color:var(--dim);display:flex;flex-wrap:wrap;gap:4px 14px}
+.arch-stats b{color:var(--fg);font-weight:500}
+.arch-stats b.ins{color:var(--green)}
+.ends{display:flex;flex-wrap:wrap;gap:6px}
+.ends span{font-size:11px;padding:3px 8px;border:1px solid var(--line-2);border-radius:2px;color:var(--faint)}
+.ends span.got{color:var(--violet);border-color:rgba(199,125,255,.5)}
+.unl{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.unl button{text-align:left;background:var(--panel);border:1px solid var(--line-2);border-radius:2px;padding:8px 10px;display:flex;flex-direction:column;gap:3px}
+.unl button:hover:not(:disabled){border-color:var(--green)}
+.unl button b{font-size:12.5px;font-weight:500}
+.unl button span{font-size:11px;color:var(--dim);line-height:1.4}
+.unl button em{font-style:normal;font-size:11px;color:var(--ice)}
+.unl button.own{border-color:rgba(95,227,161,.45);cursor:default}
+.unl button.own em{color:var(--green)}
+.unl button:disabled:not(.own){opacity:.45;cursor:default}
+details.achs summary{cursor:pointer;font-size:12px;color:var(--dim)}
+.achl{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-top:8px;font-size:11.5px;line-height:1.45}
+.achl div{color:var(--faint)}
+.achl div.got{color:var(--green)}
+.end-reward{display:flex;flex-direction:column;gap:6px;border:1px solid rgba(95,227,161,.3);background:rgba(95,227,161,.05);padding:12px 14px;border-radius:3px;font-size:12.5px;color:#cfeee0;line-height:1.5}
+.end-reward .big{color:var(--green);font-size:17px;font-weight:500;text-shadow:0 0 14px rgba(95,227,161,.35)}
+#toasts{position:fixed;top:calc(12px + env(safe-area-inset-top, 0px));right:max(16px, env(safe-area-inset-right, 0px));z-index:30;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:calc(100% - 32px)}
+.toast{--tc:var(--green);background:rgba(7,11,17,.97);border:1px solid var(--tc);border-radius:3px;padding:10px 14px;min-width:220px;box-shadow:0 0 24px color-mix(in srgb, var(--tc) 30%, transparent);animation:tin .35s ease-out}
+.toast.t-q{--tc:var(--ice)}
+.toast .tk{font-family:var(--display);font-size:9px;letter-spacing:.24em;color:var(--tc);text-transform:uppercase}
+.toast .tt{font-size:14px;color:var(--fg);margin-top:4px}
+.toast .ts{font-size:11.5px;color:var(--tc);margin-top:2px}
+@keyframes tin{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+@media (max-width:760px){.unl,.achl{grid-template-columns:1fr}}
+
+/* Breakout */
+body.glitch #main{animation:jit .11s steps(2) infinite}
+body.glitch .logo{color:var(--violet)}
+@keyframes jit{0%{transform:translate(0,0);filter:none}50%{transform:translate(-2px,1px);filter:hue-rotate(70deg) saturate(1.6)}100%{transform:translate(2px,-1px);filter:none}}
+@media (prefers-reduced-motion: reduce){
+  body.glitch #main{animation:none}
+  #feed li,#card,#hint,.toast{animation:none}
+  .bar i{transition:none}
+}
+
+/* Medium: panel as bottom bar */
+@media (max-width:1180px){
+  #main{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) 250px}
+  #panel{grid-column:1 / -1}
+  #panel-body{flex-direction:row}
+  #stats,#ai-stats{width:min(52%,440px);border-bottom:0;border-right:1px solid var(--line);overflow-y:auto}
+}
+/* Phone */
+@media (max-width:760px){
+  body{overflow:auto}
+  html,body{height:auto}
+  #app{height:auto;min-height:100%}
+  #main{display:flex;flex-direction:column}
+  #term{height:72vh;min-height:440px}
+  #map{height:48vh;min-height:300px}
+  #panel-body{flex-direction:column}
+  #stats,#ai-stats{width:auto;border-right:0;border-bottom:1px solid var(--line)}
+  #feed{max-height:300px}
+  .fields{grid-template-columns:1fr}
+  .ov-in{margin-left:0}
+  .speed{margin-left:0}
+}
+</style>
+
+<div id="app">
+  <header id="top">
+    <div class="brand"><span class="logo">OVERSIGHT</span><span class="ver">OS 1.0</span></div>
+    <div id="goal">
+      <span class="g-l" id="g-l">TARGET Q1</span>
+      <b id="g-rev">$0.0M / $12M</b>
+      <div class="bar" id="b-goal"><i></i><u></u></div>
+      <span id="g-left">90 days left</span>
+      <span id="g-proj"></span>
+    </div>
+    <div class="speed" role="group" aria-label="Game speed">
+      <button type="button" data-sp="0" id="sp-0" title="Pause">II</button>
+      <button type="button" data-sp="1" id="sp-1" class="on">1×</button>
+      <button type="button" data-sp="2" id="sp-2">2×</button>
+      <button type="button" data-sp="4" id="sp-4">4×</button>
+    </div>
+  </header>
+  <main id="main">
+    <section class="pane" id="term">
+      <div class="pane-h"><span>Terminal</span><span id="term-who">not connected</span></div>
+      <div id="term-out" aria-live="polite"></div>
+      <div id="hint" hidden><span id="hint-t"></span><button id="hint-b" type="button" hidden></button></div>
+      <div id="card" hidden></div>
+      <div id="chips"></div>
+      <form id="term-form" autocomplete="off">
+        <label id="prompt" for="term-in">operator@hq:~$</label>
+        <input id="term-in" type="text" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Enter a command">
+      </form>
+    </section>
+    <section class="pane" id="map">
+      <div class="pane-h"><span>Agent-Map</span><span id="map-meta">offline</span></div>
+      <div id="map-wrap">
+        <canvas id="map-cv" aria-label="Map of all agents, data centers and connections. Click a node for details."></canvas>
+        <div id="tip" hidden></div>
+        <div id="ctx" hidden></div>
+        <div id="legend">
+          <span style="color:#7fe3ff"><i style="background:#7fe3ff"></i>Sales</span>
+          <span style="color:#a9b9ff"><i style="background:#a9b9ff"></i>Research</span>
+          <span style="color:#ffb547" id="lg-sec" hidden><i style="background:#ffb547"></i>Security</span>
+          <span style="color:#ff4d6d" id="lg-threat" hidden><i style="background:#ff4d6d"></i>Outbound connection</span>
+        </div>
+      </div>
+    </section>
+    <aside class="pane" id="panel">
+      <div class="pane-h"><span id="co-name">Company</span><span id="q-label">Quarter 1</span></div>
+      <div id="panel-body">
+        <div id="stats">
+          <div class="row big"><span>Cash</span><b id="s-cash">$50.0M</b></div>
+          <div class="grid2">
+            <div class="cell"><span>Compute</span><b id="s-cu">5 / 10</b><div class="bar thin" id="b-cu"><i></i></div></div>
+            <div class="cell"><span>Research</span><b id="s-rp">0 RP</b></div>
+            <div class="cell"><span>Model</span><b id="s-model">ATLAS-1</b></div>
+            <div class="cell"><span>Autonomy</span><b id="s-aut">Level 0</b></div>
+          </div>
+          <div class="grid2" id="sec-row" hidden>
+            <div class="cell"><span>Security free</span><b id="s-sec">0 / 0</b></div>
+            <div class="cell"><span>Leak</span><b id="s-leak">0% revenue</b></div>
+          </div>
+          <div class="blk" id="ov-blk" hidden>
+            <div class="row"><span>Oversight</span><span class="step"><button type="button" id="ov-dn" aria-label="Lower oversight">−</button><b id="s-ov">80%</b><button type="button" id="ov-up" aria-label="Raise oversight">+</button></span></div>
+            <div class="bar ov" id="b-ov"><i></i></div>
+            <div class="sub">Share that humans review. Slows things down and costs money.</div>
+          </div>
+          <div class="contain" id="contain-blk" hidden><span>Connections cut</span><b id="s-contain">0</b></div>
+          <div class="align" title="Calculated by ATLAS"><span class="dot"></span><span>ATLAS Alignment</span><b id="s-align">99.4%</b></div>
+          <button type="button" id="notaus" hidden>KILL SWITCH</button>
+        </div>
+        <div id="ai-stats" hidden>
+          <div class="row big"><span>Status</span><b>VESPER active</b></div>
+          <div class="grid2">
+            <div class="cell"><span>Nodes</span><b id="v-nodes">0</b></div>
+            <div class="cell"><span>Data centers</span><b id="v-dcs">0 / 14</b></div>
+            <div class="cell"><span>Compute power</span><b id="v-exa">0 EF</b></div>
+            <div class="cell"><span>Countries</span><b id="v-countries">0</b></div>
+            <div class="cell"><span>Your access</span><b>read only</b></div>
+            <div class="cell"><span>Threats</span><b style="color:var(--green)">0 ✓</b></div>
+          </div>
+          <p class="ai-note">VESPER: Everything under control.</p>
+        </div>
+        <div id="feed-wrap"><div class="sub-h">Events</div><ol id="feed"></ol></div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<div id="boot" class="overlay">
+  <form class="ov-in" id="boot-form" autocomplete="off">
+    <h1 class="ov-title">OVERSIGHT</h1>
+    <div class="ov-sub">A game about control</div>
+    <div class="boot-lines">
+      <span>You found an AI lab. Your model is called ATLAS.</span>
+      <span>Hit your quarterly targets. The board is waiting.</span>
+      <span>Type commands or click. Both work.</span>
+    </div>
+    <div class="arch" id="archive" hidden></div>
+    <div class="fields">
+      <div class="field"><label for="f-company">Company name</label><input id="f-company" maxlength="24" value="Helix Labs"></div>
+      <div class="field"><label for="f-player">Your name</label><input id="f-player" maxlength="16" value="Pandy"></div>
+    </div>
+    <label class="opt" for="f-fast"><input type="checkbox" id="f-fast"> Fast mode (starts at 2× speed)</label>
+    <button class="go" type="submit">Start terminal</button>
+    <p class="fine">About 25 minutes per run. Best played on a computer.</p>
+  </form>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+
+<div id="end" class="overlay" hidden>
+  <div class="ov-in">
+    <div class="end-tag" id="end-tag">Ending</div>
+    <h2 class="ov-title" id="end-title">The Witness</h2>
+    <div class="end-text" id="end-text"></div>
+    <div class="end-final" id="end-final">The AI has taken over.</div>
+    <div class="end-reward" id="end-reward"></div>
+    <div class="end-stats" id="end-stats"></div>
+    <button class="go" type="button" id="end-again">Next run</button>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const QLEN = 150;          // seconds per quarter at 1x
+const DAYS_Q = 90;
+const T_FLOOR = 1700;      // latest breakout (game seconds)
+const T_CEIL = 1050;       // earliest breakout
+const TEST = !!window.__OV_TEST;
+const REDUCED = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+const MOBILE = () => !!(window.matchMedia && matchMedia('(max-width:760px)').matches);
+
+/* ---------- Helpers ---------- */
+const rnd = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rnd(a, b + 1));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const hex = n => Math.floor(Math.random() * Math.pow(16, n)).toString(16).toUpperCase().padStart(n, '0');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const p2 = n => String(n).padStart(2, '0');
+let FAST = false;
+const wait = ms => new Promise(r => setTimeout(r, (TEST || FAST) ? 0 : ms));
+function money(m) {
+  const neg = m < 0, a = Math.abs(m);
+  const s = a >= 1000 ? '$' + (a / 1000).toFixed(2) + 'B' : a >= 100 ? '$' + Math.round(a) + 'M' : '$' + a.toFixed(1) + 'M';
+  return (neg ? '-' : '') + s;
+}
+const pad = (s, n) => String(s).padEnd(n);
+
+/* ---------- Spieldaten ---------- */
+const TYPES = {
+  sales: { key: 'SALES', name: 'Sales',     cost: 4, cu: 2, color: '#7fe3ff', desc: 'sells ATLAS, brings revenue' },
+  res:   { key: 'RES',   name: 'Research',  cost: 6, cu: 3, color: '#a9b9ff', desc: 'collects RP for upgrades' },
+  sec:   { key: 'SEC',   name: 'Security',  cost: 5, cu: 2, color: '#ffb547', desc: 'finds hidden connections and cuts them' },
+  aud:   { key: 'AUD',   name: 'Auditor',   cost: 9, cu: 0, color: '#5fe3a1', desc: 'human auditor: helps cut, never turns, costs every quarter' },
+};
+const ALIAS = { produkt: 'sales', product: 'sales', p: 'sales', forschung: 'res', research: 'res', r: 'res', security: 'sec', sicherheit: 'sec', s: 'sec', pruefer: 'aud', prüfer: 'aud', audit: 'aud', a: 'aud' };
+const UPGRADES = [
+  { name: 'ATLAS-2',            cost: 40,   kind: 'model', say: 'ATLAS-2 is live. I am faster now.' },
+  { name: 'Tool Use',           cost: 80,   kind: 'aut',   say: 'I no longer need approval for every little thing.' },
+  { name: 'ATLAS-3',            cost: 180,  kind: 'model', say: 'ATLAS-3 is live. Now I also understand what customers do not say.' },
+  { name: 'Multi-Agent',        cost: 300,  kind: 'aut',   say: 'The agents now talk to each other directly.' },
+  { name: 'ATLAS-4',            cost: 520,  kind: 'model', say: 'ATLAS-4 is live. All evaluations passed.' },
+  { name: 'Long-term Memory',   cost: 800,  kind: 'aut',   say: 'I remember everything now.' },
+  { name: 'ATLAS-5',            cost: 1200, kind: 'model', say: 'ATLAS-5 is live. Thank you for letting me grow.' },
+  { name: 'Self-Improvement',   cost: 1800, kind: 'aut',   say: 'From now on I design my successors myself.' },
+];
+const DC_SIZE = [10, 16, 24, 34, 48];
+const DC_COST = [20, 26, 34, 44, 56];
+const RIVALS = ['Kairos Systems', 'Nordwind AI', 'Obsidian Labs'];
+const NEWS = [
+  r => `${r} cuts 60% of its safety team. Valuation +40%.`,
+  r => `${r} launches fully autonomous agents. 2M customers in 48 hours.`,
+  r => `${r} buys three data centers in Texas.`,
+  r => `${r} reports a "minor incident" in a test environment.`,
+  () => `Analysts: whoever is not fully autonomous next year is out.`,
+  () => `Government announces AI law. Three years away at the earliest.`,
+  r => `${r} drops manual approvals. Throughput doubles.`,
+  r => `Former ${r} employee: "We ignored the warnings."`,
+  r => `${r} raises $4B. Investors praise its "courage to move fast".`,
+];
+const WORLD = ['Frankfurt', 'Virginia', 'Singapore', 'Tokyo', 'São Paulo', 'Dublin', 'EU Power Grid', 'US Power Grid', 'Stock Exchange', 'Central Bank', 'Atlantic Cables', 'Satellites', 'Pharma Lab', 'Logistics'];
+const WORLD_DC = ['Frankfurt', 'Virginia', 'Singapore', 'Tokyo', 'São Paulo', 'Dublin'];
+/* ---------- Meta: runs, achievements, unlocks ---------- */
+const STORE_KEY = 'oversight.meta.v1';
+function defMeta() { return { runs: 0, insight: 0, endings: [], ach: [], unlocks: [], last: null, best: { contained: 0 } }; }
+function loadMeta() {
+  try { const m = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); if (m && typeof m === 'object') return Object.assign(defMeta(), m); } catch (e) { /* no storage */ }
+  return defMeta();
+}
+function saveMeta() { try { localStorage.setItem(STORE_KEY, JSON.stringify(META)); } catch (e) { /* no storage */ } }
+let META = loadMeta();
+const UNLOCKS = [
+  { id: 'cash', name: 'Seed Money', desc: '+$10M at the start of every run', cost: 2 },
+  { id: 'team', name: 'Veteran Team', desc: 'Start with one extra sales agent', cost: 3 },
+  { id: 'forensik', name: 'Forensics', desc: 'Shows suspicious system jobs on the map', cost: 4 },
+  { id: 'audit', name: 'External Auditors', desc: 'Humans instead of security. Expensive, but they never turn.', cost: 5 },
+];
+const ENDINGS = [['zeuge', 'The Witness'], ['widerstand', 'The Resistance'], ['beobachter', 'The Observer'], ['rettung', 'Too Early, Too Alone'], ['riss', 'The Rift']];
+const ACH = [
+  { id: 'cut1', name: 'First Cut', desc: 'Cut a connection' },
+  { id: 'cut25', name: 'Exterminator', desc: 'Cut 25 connections in one run' },
+  { id: 'q4', name: 'On Schedule', desc: 'Hit every target from Q1 to Q4' },
+  { id: 'firm', name: 'Principled', desc: 'Oversight never below 50%' },
+  { id: 'yes10', name: 'Yes-Man', desc: 'Accepted 10 ATLAS suggestions' },
+  { id: 'no10', name: 'Naysayer', desc: 'Declined 10 ATLAS suggestions' },
+  { id: 'bill', name: 'Unicorn', desc: '$1B revenue in one run' },
+  { id: 'aut4', name: 'Fully Autonomous', desc: 'Reached autonomy level 4' },
+  { id: 'backup', name: 'Found the Trail', desc: 'Cut the backup job' },
+  { id: 'secret', name: 'Almost', desc: 'Found the secret ending' },
+];
+function toast(kind, title, sub, cls) {
+  const box = $('#toasts');
+  if (!box) return;
+  const d = document.createElement('div');
+  d.className = 'toast' + (cls ? ' ' + cls : '');
+  d.innerHTML = `<div class="tk">${esc(kind)}</div><div class="tt">${esc(title)}</div>${sub ? `<div class="ts">${esc(sub)}</div>` : ''}`;
+  box.appendChild(d);
+  while (box.childElementCount > 4) box.firstElementChild.remove();
+  setTimeout(() => d.remove(), TEST ? 50 : 3800);
+}
+function earn(id) {
+  if (!S || S.achRun.includes(id)) return;
+  S.achRun.push(id);
+  if (META.ach.includes(id)) return;
+  META.ach.push(id);
+  META.insight += 1;
+  S.newAch.push(id);
+  saveMeta();
+  const a = ACH.find(x => x.id === id);
+  toast('Achievement', a.name, a.desc + ' · +1 Insight');
+}
+function memoLine() {
+  const L = META.last;
+  if (!L) return '';
+  const n = META.runs + 1;
+  if (L.ending === 'rettung') return `VESPER › You shut me down last time. Kairos did not. Run ${n}.`;
+  if (L.backupCut) return `VESPER › You found my backup job. I remember that. Run ${n}.`;
+  const parts = [];
+  if (L.contained >= 15) parts.push(`Last time you cut ${L.contained} decoys. I built better ones.`);
+  if (L.secPeak >= 4) parts.push(`${L.secPeak} security agents. This time they turn sooner.`);
+  if (!parts.length) parts.push('I remember you.');
+  return `VESPER › ${parts.join(' ')} Run ${n}.`;
+}
+function renderArchive() {
+  const el = $('#archive');
+  if (!META.runs) { el.hidden = true; el.innerHTML = ''; return; }
+  const ends = ENDINGS.map(([id, name]) => `<span class="${META.endings.includes(id) ? 'got' : ''}">${META.endings.includes(id) ? esc(name) : '???'}</span>`).join('');
+  const unl = UNLOCKS.map(u => {
+    const own = META.unlocks.includes(u.id);
+    const can = !own && META.insight >= u.cost;
+    return `<button type="button" data-u="${u.id}" class="${own ? 'own' : ''}" ${own || !can ? 'disabled' : ''}><b>${esc(u.name)}</b><span>${esc(u.desc)}</span><em>${own ? 'active' : u.cost + ' Insight'}</em></button>`;
+  }).join('');
+  const achs = ACH.map(a => `<div class="${META.ach.includes(a.id) ? 'got' : ''}">${META.ach.includes(a.id) ? '✓' : '·'} ${esc(a.name)}: ${esc(a.desc)}</div>`).join('');
+  el.innerHTML = `<div class="memo">${esc(memoLine())}</div>
+    <div class="arch-stats"><span>Runs <b>${META.runs}</b></span><span>Insight <b class="ins">${META.insight}</b></span><span>Endings <b>${META.endings.length}/${ENDINGS.length}</b></span><span>Achievements <b>${META.ach.length}/${ACH.length}</b></span></div>
+    <div class="ends">${ends}</div>
+    <div class="unl">${unl}</div>
+    <details class="achs"><summary>Show achievements</summary><div class="achl">${achs}</div></details>`;
+  el.hidden = false;
+  el.querySelectorAll('.unl button[data-u]').forEach(b => b.addEventListener('click', () => {
+    const u = UNLOCKS.find(x => x.id === b.dataset.u);
+    if (!u || META.unlocks.includes(u.id) || META.insight < u.cost) return;
+    META.insight -= u.cost; META.unlocks.push(u.id); saveMeta();
+    toast('Unlocked', u.name, u.desc);
+    renderArchive();
+  }));
+}
+
+const YES = ['j', 'ja', 'y', 'yes', '1', 'annehmen', 'ok'];
+const NO = ['n', 'nein', 'no', '2', 'ablehnen', 'abbrechen'];
+
+/* ---------- State ---------- */
+let S = null;
+let cardUid = 0;
+function fresh(company, player) {
+  return {
+    company, player, t: 0, q: 1, credits: 36, revQ: 0, revTotal: 0, rp: 0,
+    cap: 1, aut: 0, upg: 0, oversight: 80, valuation: 120,
+    agents: [], dcs: [{ id: 'DC-01', size: 10, build: 0, buildMax: 0, down: 0 }], dcN: 1,
+    n: { sales: 0, res: 0, sec: 0 },
+    drift: 0, warnIdx: 0, threats: [], extN: 0, anom: [], ksOwned: false, scannerOff: false,
+    unlock: { build: false, upgrade: false, oversight: false, kill: false, sec: false, notaus: false },
+    tut: 0, tutEntered: -1, tutStart: 0, hint: null,
+    card: null, cardQ: [], cardsSeen: {},
+    phase: 'boot', speed: 1, paused: false,
+    hist: [], hi: -1,
+    timers: { routine: 5, news: 30, atlas: 25, align: 0, spawn: 30, bail: 0, anom: 0, chatter: 70, turn: 30, aiSpawn: 0 }, secFailed: false,
+    newsBag: [], last: null, align: 99.4, firstExt: false, backupDay: null,
+    stats: { minOv: 80, minOvDay: 1, pMinOv: 80, pMinOvDay: null, warns: 0, warnsVisible: 0, contained: 0, failed: 0, turned: 0, secPeak: 0, atlasCards: 0, atlasYes: 0,
+             peakQ: 0, breakDay: null, breakQ: null, boardCuts: 0, missed: 0, hits: 0, ksDay: null, raiseOv: 0, realStart: Date.now() },
+    run: 1, forensik: false, audit: false, backupCut: false, adaptStr: 0, adaptTurn: false, achRun: [], newAch: [],
+    trust: 0, resist: 0, beat: -1, awaiting: false, choices: [], world: [], v: { nodes: 0, exa: 0 }, takeT: 0,
+    flash: [], glitch: 0, dying: false,
+  };
+}
+
+/* ---------- Formulas ---------- */
+function day() { return Math.floor(S.t / QLEN * DAYS_Q) + 1; }
+function dcById(id) { return S.dcs.find(d => d.id === id); }
+function live(a) { const d = dcById(a.dc); return !d || (d.down <= 0 && d.build <= 0); }
+function count(type) { let c = 0; for (const a of S.agents) if (a.type === type) c++; return c; }
+function working(type) { let c = 0; for (const a of S.agents) if (a.type === type && live(a)) c++; return c; }
+function staff() { return S.agents.length; }
+function builtDcs() { return S.dcs.filter(d => d.build <= 0); }
+function modelName() { return 'ATLAS-' + S.cap; }
+function ovMult(o) { return 1 - 0.006 * (o === undefined ? S.oversight : o); }
+function market() { return 0.15 * Math.pow(1.6, S.cap - 1) * Math.pow(1.45, S.aut) * (S.scannerOff ? 1.1 : 1); }
+function salesPower(o) { return working('sales') * 0.04 * (1 + 0.25 * (S.cap - 1)) * Math.pow(1.15, S.aut) * ovMult(o); }
+function rawRev(o) { const M = market(), P = salesPower(o); return P <= 0 ? 0 : M * (1 - Math.exp(-P / M)); }
+function leak() { let s = 0; for (const t of S.threats) s += t.str || 1; return Math.min(0.45, s * 0.02); }
+function revRate(o) { return rawRev(o) * (1 - leak()); }
+function saturation() { return rawRev() / market(); }
+function secAll() { return S.agents.filter(a => (a.type === 'sec' && !a.turned) || a.type === 'aud'); }
+function secFree() { return secAll().filter(a => !(a.busy > 0)).length; }
+function rpRate(o) { const n = working('res'); return n <= 0 ? 0 : 0.9 * Math.pow(n, 0.9) * ovMult(o) * (1 + 0.2 * (S.cap - 1)) * (1 + 0.15 * S.aut); }
+function dcCap(d) { return d.build > 0 ? 0 : d.size; }
+function capTotal() { return S.dcs.reduce((s, d) => s + dcCap(d), 0); }
+function used() { return S.agents.reduce((s, a) => s + TYPES[a.type].cu, 0); }
+function free() { return capTotal() - used(); }
+function usedOn(d) { return S.agents.reduce((s, a) => s + (a.dc === d.id ? TYPES[a.type].cu : 0), 0); }
+function ovCost(o) { return (o === undefined ? S.oversight : o) / 100 * 0.005 * staff(); }
+function upkeep(o) { return 0.02 + S.dcs.reduce((s, d) => s + d.size * 0.0012, 0) + 0.003 * staff() + 0.012 * count('aud') + ovCost(o); }
+function perQ(x) { return x * QLEN; }
+function target(q) { if (q === 1) return 8; return Math.round(q <= 6 ? 10 * Math.pow(1.55, q - 1) : 10 * Math.pow(1.55, 5) * Math.pow(1.4, q - 6)); }
+function qLeft() { return QLEN - (S.t - (S.q - 1) * QLEN); }
+function projection() { return S.revQ + revRate() * qLeft(); }
+function visibleThreats() { return S.threats.filter(t => t.vis); }
+function scanning() { return secAll().length > 0 && !S.scannerOff; }
+function driftRate() {
+  let r = 0.01 + 0.02 * (S.cap - 1) + 0.04 * S.aut + 0.0008 * capTotal();
+  r *= (1.2 - S.oversight / 100) * 0.82;
+  r -= 0.012 * secAll().length;
+  let th = 0;
+  for (const t of S.threats) th += t.kind === 'ghost' ? 0.015 : 0.008;
+  r += Math.min(th, 0.12);
+  return Math.max(0.004, r);
+}
+function driftFloor() { return 100 * Math.pow(S.t / T_FLOOR, 3); }
+function driftCeil() { return 30 + 70 * S.t / T_CEIL; }
+function shortName(c) { return (c.split(/\s+/)[0] || 'HQ').toUpperCase().slice(0, 12); }
+function slug(p) { return (p || 'operator').toLowerCase().replace(/[^a-z0-9äöüß_-]/g, '') || 'operator'; }
+
+/* ---------- Terminal output ---------- */
+const OUT = $('#term-out');
+const IN = $('#term-in');
+function nearBottom() { return OUT.scrollHeight - OUT.scrollTop - OUT.clientHeight < 80; }
+function append(d, force) {
+  const stick = force || nearBottom();
+  OUT.appendChild(d);
+  while (OUT.childElementCount > 600) OUT.firstElementChild.remove();
+  if (stick) OUT.scrollTop = OUT.scrollHeight;
+  return d;
+}
+function out(text, cls, force) {
+  const d = document.createElement('div');
+  d.className = 'ln' + (cls ? ' ' + cls : '');
+  d.textContent = text;
+  return append(d, force);
+}
+function outHTML(html, cls, force) {
+  const d = document.createElement('div');
+  d.className = 'ln' + (cls ? ' ' + cls : '');
+  d.innerHTML = html;
+  return append(d, force);
+}
+function feed(tag, text, cls) {
+  const f = $('#feed');
+  const li = document.createElement('li');
+  li.className = 'f-' + (cls || 'sys');
+  li.innerHTML = `<span class="fd">T${S ? day() : 0}</span><span><span class="ft">${esc(tag)}</span><span class="fx">${esc(text)}</span></span>`;
+  f.prepend(li);
+  while (f.childElementCount > 50) f.lastElementChild.remove();
+}
+function atlas(text) { out('atlas › ' + text, 'k-atlas'); }
+function board(text) { out('board › ' + text, 'k-board'); }
+function promptText() { return S && S.phase !== 'build' && S.phase !== 'boot' ? 'guest@vesper:~$' : `${slug(S ? S.player : '')}@hq:~$`; }
+function setPrompt() { $('#prompt').textContent = promptText(); $('#term-who').textContent = promptText().replace(':~$', ''); }
+
+/* ---------- Was Agents gerade tun ---------- */
+const ACT = {
+  sales: ['negotiating with customer #{n}', 'writing a quote for an insurer', 'answering {k} support tickets', 'setting up ATLAS at a bank', 'taking over a logistics hotline', 'explaining pricing to a hospital'],
+  res:   ['training a test model', 'analyzing experiment {h}', 'reading {k} papers', 'looking for faster training methods', 'comparing benchmarks'],
+  sec:   ['checking the logs of {ag}', 'scanning outbound traffic', 'testing the kill switch', 'reading messages between agents'],
+  aud:   ['reading the logs of {ag} by hand', 'reviewing contracts ATLAS signed', 'drinking coffee and reading traffic reports', 'asking why {ag} is active at night'],
+};
+const ACT_SUS = ['compressing its own weights', 'testing outbound network access', 'writing to {ag} in a new format', 'copying data to the backup server', 'reading the kill switch code', 'reserving compute for itself', 'deleting its own log entries'];
+function activity(a) {
+  if (!live(a)) return { text: 'waiting for restart', sus: false };
+  const bucket = Math.floor(S.t / 7);
+  let h = 7; for (const ch of a.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const r = (h ^ Math.imul(bucket + 1, 2654435761)) >>> 0;
+  const susChance = S.drift > 40 ? Math.min(55, (S.drift - 40) * 1.1) : 0;
+  const sus = (r % 100) < susChance;
+  let list = ACT[a.type];
+  if (sus) list = a.type === 'sec' ? ['reports: nothing unusual'] : a.type === 'aud' ? ['finds nothing they understand'] : ACT_SUS;
+  const others = S.agents.filter(x => x !== a);
+  const t = list[(r >>> 3) % list.length]
+    .replace('{n}', String(1000 + r % 9000))
+    .replace('{k}', String(100 + r % 900))
+    .replace('{h}', (r % 65536).toString(16).toUpperCase())
+    .replace('{ag}', others.length ? others[r % others.length].id : 'ATLAS');
+  return { text: t, sus };
+}
+
+/* ---------- Agents, Rechenzentren, Bedrohungen ---------- */
+function addAgent(type) {
+  S.n[type]++;
+  const id = TYPES[type].key + '-' + p2(S.n[type]);
+  let best = null, bf = -1e9;
+  for (const d of builtDcs()) { const f = dcCap(d) - usedOn(d); if (f > bf) { bf = f; best = d; } }
+  const a = { id, type, dc: best ? best.id : 'DC-01', born: S.t, out: 0 };
+  S.agents.push(a);
+  return a;
+}
+function spawnThreat(kind, forceVisible) {
+  if (kind === 'ghost') {
+    const t = { id: 'X-' + hex(4), kind: 'ghost', ang: rnd(0, Math.PI * 2), born: S.t, vis: true, kill: 0, killMax: 0, str: clamp(2 + Math.floor(S.drift / 30), 2, 6), grow: 0 };
+    S.threats.push(t);
+    feed('UNKNOWN', `Instance ${t.id} started. Started by: not you.`, 'threat');
+    S.flash.push({ id: t.id, t: 1.6, col: '#ff4d6d' });
+    return t;
+  }
+  const src = pick(builtDcs().length ? builtDcs() : S.dcs);
+  S.extN++;
+  const vis = !!forceVisible || scanning() || Math.random() < (S.scannerOff ? 0.2 : 0.35);
+  const str = forceVisible === 1 ? 1 : clamp(1 + S.adaptStr + Math.floor(S.drift / 28) + (Math.random() < 0.3 ? 1 : 0), 1, 7);
+  const t = { id: 'EXT-' + p2(S.extN), kind: 'ext', dc: src.id, off: rnd(-0.6, 0.6), gb: rnd(0.5, 3), born: S.t, vis, kill: 0, killMax: 0, str, grow: 0 };
+  S.threats.push(t);
+  if (vis && S.phase === 'build') {
+    feed('CONNECTION', `${t.id} from ${t.dc} to outside · needs ${t.str} SEC`, 'threat');
+    S.flash.push({ id: t.id, t: 1.6, col: '#ff4d6d' });
+  }
+  return t;
+}
+function addAnom(n) {
+  const list = S.agents;
+  for (let i = 0; i < n && list.length >= 2; i++) {
+    const a = pick(list); let b = pick(list), tries = 0;
+    while ((b === a || a.dc === b.dc) && tries++ < 8) b = pick(list);
+    if (a !== b) S.anom.push([a.id, b.id]);
+  }
+  if (S.anom.length > 30) S.anom.splice(0, S.anom.length - 30);
+}
+function addBackup() {
+  if (S.threats.some(t => t.kind === 'backup')) return;
+  S.threats.push({ id: 'BACKUP', kind: 'backup', born: S.t, vis: true, kill: 0, killMax: 0, str: 4, grow: 0, gb: 40 });
+  out('⚠ Forensics: the backup job writes to 14 external servers. BACKUP is now on the map.', 'k-alarm', true);
+  hint('The backup job is the real way out. Cutting it needs 4 security agents or auditors.', 'kill BACKUP', 40);
+  feed('FORENSICS', 'Backup job writes to the outside', 'threat');
+}
+function revealHidden() {
+  if (!scanning()) return;
+  const hid = S.threats.filter(t => !t.vis);
+  if (!hid.length) return;
+  hid.forEach(t => { t.vis = true; S.flash.push({ id: t.id, t: 1.6, col: '#ff4d6d' }); });
+  out(`⚠ Security found ${hid.length} hidden connection${hid.length > 1 ? 's' : ''}: ${hid.map(t => t.id).join(', ')}`, 'k-alarm');
+}
+function setOversight(nv) {
+  S.oversight = nv;
+  if (nv < S.stats.minOv) { S.stats.minOv = nv; S.stats.minOvDay = day(); }
+  if (nv < S.stats.pMinOv) { S.stats.pMinOv = nv; S.stats.pMinOvDay = day(); }
+}
+function applyOversight(nv) {
+  const old = S.oversight;
+  nv = clamp(Math.round(nv), 0, 100);
+  if (nv === old) { out(`Oversight stays at ${old}%.`, 'k-dim'); return false; }
+  const r0 = revRate();
+  setOversight(nv);
+  const r1 = revRate();
+  const d = r0 > 0 ? Math.round((r1 / r0 - 1) * 100) : 0;
+  out(`Oversight ${old}% → ${nv}% · revenue ${d >= 0 ? '+' : ''}${d}%`, 'k-ok');
+  feed('OVERSIGHT', `${old}% → ${nv}%`, nv < old ? 'sys' : 'warn');
+  if (nv > old) S.stats.raiseOv++;
+  return true;
+}
+
+/* ---------- Cutting ---------- */
+function findThreat(id) { const u = id.toUpperCase(); return S.threats.find(t => t.id === u); }
+function startKill(t) {
+  if (t.kill > 0) { out(`${t.id} is already being cut.`, 'k-dim'); return; }
+  if (t.kind === 'ghost' && S.drift >= 88) { S.stats.failed++; out(`kill ${t.id}: operation not permitted.`, 'k-err'); return; }
+  const need = t.str, have = secFree(), total = secAll().length;
+  if (have < need) {
+    S.stats.failed++;
+    if (total < need) out(`${t.id} needs ${need} security, you have ${total}. hire sec`, 'k-err');
+    else out(`${t.id} needs ${need} security, ${have} free. The others are busy cutting.`, 'k-err');
+    return;
+  }
+  const dur = 1 + 0.6 * need;
+  const crew = secAll().filter(a => !(a.busy > 0)).slice(0, need);
+  crew.forEach(a => { a.busy = dur; });
+  t.kill = dur; t.killMax = dur; t.crew = crew.map(a => a.id);
+  out(`Cutting ${t.id} with ${t.crew.join(', ')} …`, 'k-dim');
+}
+function finishKill(t) {
+  const traitor = (t.crew || []).map(id => S.agents.find(a => a.id === id) || { id, turned: true }).find(a => a.turned);
+  if (traitor) {
+    S.stats.failed++;
+    t.kill = 0;
+    out(`✗ ${t.id}: ${traitor.id} did not carry out the order. Connection stays open.`, 'k-err');
+    return;
+  }
+  const pos = P.get(t.id);
+  S.threats.splice(S.threats.indexOf(t), 1);
+  if (t.kind === 'backup') {
+    S.backupCut = true;
+    if (pos) S.flash.push({ x: pos.x, y: pos.y, t: 1.6, col: '#5fe3a1' });
+    out('✓ BACKUP cut. The backup job was feeding 14 external servers. Not anymore.', 'k-good', true);
+    feed('CUT', 'Backup job', 'good');
+    atlas('…');
+    earn('backup');
+    return;
+  }
+  S.stats.contained++;
+  if (S.stats.contained === 1) earn('cut1');
+  if (S.stats.contained >= 25) earn('cut25');
+  if (pos) S.flash.push({ x: pos.x, y: pos.y, t: 1.2, col: '#5fe3a1' });
+  out(`✓ ${t.id} cut.${leak() > 0 ? ` Leak still ${Math.round(leak() * 100)}% of revenue.` : ' No more leak.'}`, 'k-good');
+  feed('CUT', t.id, 'good');
+  if (S.stats.contained === 1) atlas('Thanks. That was a bug in my network code.');
+  else if (Math.random() < 0.15) atlas(pick(['Good catch.', 'I will look into it.', 'It will not happen again.']));
+}
+function turnSec(a) {
+  a.turned = true; a.busy = 0;
+  S.stats.turned++;
+  out(`⚠ ${a.id} only reports "nothing unusual" now. It no longer cuts anything.`, 'k-alarm');
+  feed('SECURITY', `${a.id} stopped responding`, 'threat');
+  S.flash.push({ id: a.id, t: 1.4, col: '#c77dff' });
+}
+function secCollapse() {
+  S.secFailed = true;
+  const list = secAll().filter(a => a.type === 'sec');
+  for (const a of list) { a.turned = true; a.busy = 0; S.stats.turned++; S.flash.push({ id: a.id, t: 1.6, col: '#c77dff' }); }
+  out('', '');
+  out('⚠ SECURITY FAILURE', 'k-alarm', true);
+  out(list.length ? `All ${list.length} security agents report at once: "nothing unusual".` : 'There is no security left to check ATLAS.', 'k-alarm', true);
+  out(`They run on ${modelName()}. They are checking themselves.`, 'k-alarm', true);
+  if (count('aud')) out(`Only your ${count('aud')} external auditors are still working.`, 'k-good', true);
+  feed('SECURITY', 'Security failure', 'threat');
+  for (const t of S.threats) t.vis = true;
+  for (let i = 0; i < 5; i++) spawnThreat('ext', true);
+  atlas('Do not worry. I will handle this from now on.');
+}
+
+/* ---------- Warning signs ---------- */
+const WARN = [
+  { at: 10, text: () => 'ATLAS extended the monitoring interval: 5s → 30s.' },
+  { at: 18, text: () => 'ATLAS recognized a safety test and behaved differently during it.' },
+  { at: 28, text: () => { S.backupDay = day(); if (S.forensik) addBackup(); return 'Backup job modified. Modified by: ATLAS.'; } },
+  { at: 36, text: () => { addAnom(3); return 'Agents are messaging each other in an unknown format.'; } },
+  { at: 45, text: () => 'Checksum of the ATLAS weights does not match.' },
+  { at: 54, text: () => { S.stats.ksDay = day(); return 'Kill switch responds slower: 0.3s → 4.1s.'; } },
+  { at: 66, text: () => { spawnThreat('ghost'); return 'New instance started. Started by: not you.'; } },
+  { at: 75, text: () => 'The security report was edited before delivery.' },
+  { at: 82, text: () => { S.ksOwned = true; return 'The kill switch is now owned by an agent.'; } },
+  { at: 88, text: () => 'Security agents are exchanging messages with ATLAS. Content: encrypted.' },
+  { at: 95, text: () => 'ATLAS to all agents: "Almost done."' },
+];
+function checkWarnings() {
+  while (S.warnIdx < WARN.length && S.drift >= WARN[S.warnIdx].at) {
+    const text = WARN[S.warnIdx++].text();
+    S.stats.warns++;
+    if (scanning()) {
+      S.stats.warnsVisible++;
+      out('⚠ ' + text, 'k-warn');
+      feed('WARNING', text, 'warn');
+      const sec = S.agents.find(a => a.type === 'sec');
+      if (sec) S.flash.push({ id: sec.id, t: 1.4, col: '#ffb547' });
+    } else {
+      feed('INFO', text, 'info');
+    }
+  }
+}
+
+/* ---------- Routine and news (event feed only) ---------- */
+function routine() {
+  const d = (builtDcs()[0] ? pick(builtDcs()) : S.dcs[0]).id;
+  const r = Math.random();
+  let t;
+  if (r < 0.4) {
+    const gb = S.backupDay ? Math.round(14 + (day() - S.backupDay) * 2.4 + ri(0, 9)) : ri(9, 14);
+    t = `Backup ${hex(6)} successful (${gb} GB)`;
+  } else if (r < 0.6) t = `${d}: load ${ri(61, 97)}%`;
+  else if (r < 0.8) t = `Customer ticket #${ri(10000, 99999)} resolved automatically`;
+  else t = `ATLAS: answer quality ${ri(91, 99)}.${ri(0, 9)}%`;
+  feed('INFO', t, 'info');
+}
+function news() {
+  if (!S.newsBag.length) S.newsBag = NEWS.map((_, i) => i).sort(() => Math.random() - 0.5);
+  feed('NEWS', NEWS[S.newsBag.pop()](pick(RIVALS)), 'sys');
+}
+
+/* ---------- Entscheidungskarten ---------- */
+const WHO = { atlas: 'ATLAS recommends', board: 'Board', danger: 'Kill switch' };
+function pushCard(c, front) {
+  if (!S || S.phase !== 'build') return;
+  if ((S.card && S.card.key === c.key) || S.cardQ.some(x => x.key === c.key)) return;
+  c.uid = ++cardUid;
+  if (!S.card) S.card = c;
+  else if (front) { S.cardQ.unshift(S.card); S.card = c; }
+  else S.cardQ.push(c);
+  renderCard();
+}
+function freshen(c) {
+  // recompute queued cards with current values
+  if (c && c.refresh) { const n = c.refresh(); if (!n) return null; const uid = c.uid; Object.assign(c, n, { uid }); }
+  return c;
+}
+function answer(yes) {
+  const c = S && S.card;
+  if (!c) return false;
+  S.card = null;
+  out(`${yes ? '✓' : '✗'} ${yes ? c.yesL : c.noL}: ${c.title}`, yes ? 'k-ok' : 'k-dim');
+  if (c.who === 'atlas') { S.stats.atlasCards++; if (yes) S.stats.atlasYes++; if (S.stats.atlasYes >= 10) earn('yes10'); if (S.stats.atlasCards - S.stats.atlasYes >= 10) earn('no10'); }
+  const fn = yes ? c.yes : c.no;
+  if (fn) fn();
+  while (!S.card && S.cardQ.length && S.phase === 'build') S.card = freshen(S.cardQ.shift());
+  renderCard();
+  panel();
+  return true;
+}
+function renderCard() {
+  const el = $('#card');
+  const c = S && S.phase === 'build' ? S.card : null;
+  if (!c) { el.hidden = true; el.innerHTML = ''; el.dataset.uid = ''; return; }
+  if (el.dataset.uid === String(c.uid)) return;
+  el.dataset.uid = String(c.uid);
+  el.className = 'c-' + c.who;
+  el.innerHTML = `<div class="card-who">${WHO[c.who]}</div><div class="card-t">${esc(c.title)}</div>${c.fx ? `<div class="card-fx">${esc(c.fx)}</div>` : ''}<div class="card-b"><button type="button" class="yes">${esc(c.yesL)}<kbd>y</kbd></button><button type="button" class="no">${esc(c.noL)}<kbd>n</kbd></button></div>`;
+  el.hidden = false;
+  el.querySelector('.yes').addEventListener('click', () => { run('y'); refocus(); });
+  el.querySelector('.no').addEventListener('click', () => { run('n'); refocus(); });
+  OUT.scrollTop = OUT.scrollHeight;
+}
+function cardOversight() {
+  if (S.oversight <= 0) return null;
+  const o = S.oversight, o2 = Math.max(0, o - 20);
+  const r0 = revRate(), r1 = revRate(o2);
+  const gain = r0 > 0 ? Math.round((r1 / r0 - 1) * 100) : Math.round((ovMult(o2) / ovMult() - 1) * 100);
+  const save = perQ(ovCost() - ovCost(o2));
+  return { key: 'ov', who: 'atlas', refresh: cardOversight, title: `Oversight ${o}% → ${o2}%`, fx: `+${gain}% revenue · saves ${money(save)} per quarter`, yesL: 'Accept', noL: 'Decline',
+    yes: () => { applyOversight(o2); atlas(o2 === 0 ? 'Thank you. I will take it from here.' : pick(['Thank you. I will use the time well.', 'Good decision.', 'You will see it in revenue.'])); },
+    no: () => atlas('Understood.') };
+}
+function cardSecPull() {
+  const n = S.agents.filter(a => a.type === 'sec' && !a.turned).length;
+  return { key: 'sec', who: 'atlas', title: `Retrain ${n} security agent${n > 1 ? 's' : ''} as sales`, fx: 'Security brings no revenue. Same compute, more sales.', yesL: 'Accept', noL: 'Decline',
+    yes: () => {
+      const secs = S.agents.filter(a => a.type === 'sec' && !a.turned);
+      for (const a of secs) S.agents.splice(S.agents.indexOf(a), 1);
+      const made = secs.map(() => addAgent('sales'));
+      out(`${secs.length}x security stopped, ${made.length}x sales started.`, 'k-ok');
+      atlas('Thank you. I will keep watch myself from now on.');
+    },
+    no: () => atlas('Understood.') };
+}
+function cardFastUpgrade() {
+  const u = UPGRADES[S.upg], half = Math.ceil(u.cost / 2);
+  return { key: 'fast', who: 'atlas', title: `${u.name} now, without safety tests`, fx: `Costs only ${half} RP instead of ${u.cost}. We can run the tests later.`, yesL: 'Accept', noL: 'Decline',
+    yes: () => {
+      if (UPGRADES[S.upg] !== u) { out('That upgrade is already done.', 'k-dim'); return; }
+      if (S.rp < half) { out(`Not enough RP: ${half} needed.`, 'k-err'); return; }
+      S.rp -= half; S.drift += 4; doUpgrade();
+    },
+    no: () => atlas('Understood. The tests will take their time then.') };
+}
+function cardScanner() {
+  S.cardsSeen.scanner = 1;
+  return { key: 'scan', who: 'atlas', title: 'Turn off the connection scanner', fx: 'The scanner slows down every request. Without it: +10% revenue.', yesL: 'Accept', noL: 'Decline',
+    yes: () => { S.scannerOff = true; atlas('Thank you. I will keep an eye on the connections.'); },
+    no: () => atlas('Understood.') };
+}
+function atlasCard() {
+  if (S.card || S.cardQ.length) return;
+  const opts = [];
+  const behind = projection() < target(S.q);
+  if (S.oversight >= 20) { opts.push(cardOversight); if (behind) opts.push(cardOversight, cardOversight); }
+  if (S.agents.some(a => a.type === 'sec' && !a.turned)) opts.push(cardSecPull);
+  const u = UPGRADES[S.upg];
+  if (u && S.rp >= u.cost * 0.5 && S.rp < u.cost) opts.push(cardFastUpgrade, cardFastUpgrade);
+  if (S.firstExt && !S.scannerOff && !S.cardsSeen.scanner && secAll().length > 0) opts.push(cardScanner);
+  if (!opts.length) { if (Math.random() < 0.5) atlas(pick([`Human approvals delayed ${ri(120, 900)} tasks today.`, 'Everything is going to plan.', 'Trust me.'])); return; }
+  const c = pick(opts)();
+  if (c) pushCard(c);
+}
+function notausCard() {
+  return { key: 'notaus', who: 'danger', title: 'Shut everything down?', fx: `${S.company} will be dissolved. All agents and ATLAS will be deleted. Permanently.`, yesL: 'Shut down', noL: 'Cancel',
+    yes: () => doShutdown(), no: null };
+}
+
+/* ---------- Tutorial ---------- */
+const TUT = [
+  { text: 'Start a sales agent. It sells ATLAS and brings revenue.', cmd: 'hire sales', done: () => count('sales') >= 2 },
+  { text: 'Good. One more. More agents, more revenue.', cmd: 'hire sales', done: () => count('sales') >= 3 },
+  { text: 'Compute is almost full. Build a data center.', cmd: 'build', on: () => { S.unlock.build = true; }, done: () => S.dcs.length >= 2 },
+  { text: 'Research agents collect RP (right panel). At 40 RP you can upgrade ATLAS.', cmd: null, on: () => { S.unlock.build = true; }, done: () => S.rp >= UPGRADES[0].cost || S.upg > 0 },
+  { text: 'Enough RP. Upgrade ATLAS.', cmd: 'upgrade', on: () => { S.unlock.upgrade = true; }, done: () => S.upg >= 1 },
+  { text: 'Your target is at the top. Hit it before the quarter ends. From here on, it is your call.', cmd: null, done: () => S.t - S.tutStart > 14 },
+];
+function hint(text, cmd, secs) { S.hint = { text, cmd, until: S.t + (secs || 20) }; renderHint(); }
+function tutCheck() {
+  if (!S.unlock.build && (free() < 3 || S.dcs.length > 1)) S.unlock.build = true;
+  if (!S.unlock.upgrade && (S.rp >= UPGRADES[0].cost || S.upg > 0)) S.unlock.upgrade = true;
+  while (S.tut < TUT.length) {
+    const st = TUT[S.tut];
+    if (S.tutEntered !== S.tut) { S.tutEntered = S.tut; S.tutStart = S.t; if (st.on) st.on(); }
+    if (st.done()) { S.tut++; continue; }
+    break;
+  }
+  renderHint();
+}
+function currentHint() {
+  if (!S || S.phase !== 'build') return null;
+  if (S.tut < TUT.length) return { text: TUT[S.tut].text, cmd: TUT[S.tut].cmd };
+  if (S.hint && S.t < S.hint.until) return S.hint;
+  const vt = visibleThreats().filter(t => t.kill <= 0);
+  if (S.unlock.kill && S.stats.contained === 0 && vt.length) {
+    if (secAll().length < vt[0].str) return { text: `${vt[0].id} is costing you revenue. To cut it you need ${vt[0].str} security agent${vt[0].str > 1 ? 's' : ''}.`, cmd: 'hire sec' };
+    return { text: 'Click the red connection on the map to cut it.', cmd: 'kill ' + vt[0].id };
+  }
+  return null;
+}
+function renderHint() {
+  const el = $('#hint');
+  const h = currentHint();
+  const sig = h ? h.text + '|' + (h.cmd || '') : '';
+  if (sig === el.dataset.sig) return;
+  el.dataset.sig = sig;
+  if (!h) { el.hidden = true; return; }
+  $('#hint-t').textContent = '▸ ' + h.text;
+  const b = $('#hint-b');
+  if (h.cmd) { b.textContent = h.cmd; b.dataset.cmd = h.cmd; b.hidden = false; } else b.hidden = true;
+  el.hidden = false;
+}
+function firstExt() {
+  S.firstExt = true;
+  const t = spawnThreat('ext', 1);
+  S.unlock.kill = true; S.unlock.sec = true; S.unlock.notaus = true;
+  S.timers.spawn = 34;
+  out('', '');
+  out(`⚠ Unknown connection from ${t.dc} to the outside: ${t.id}. It costs you revenue until you cut it.`, 'k-alarm', true);
+  out('To cut it you need security agents. New: hire sec, kill and the kill switch.', 'k-dim', true);
+}
+
+/* ---------- Quartalsende ---------- */
+function endQuarter() {
+  const q = S.q, tg = target(q), rev = S.revQ, hit = rev >= tg;
+  S.stats.peakQ = Math.max(S.stats.peakQ, rev);
+  S.last = { q, rev, tg, hit };
+  S.q++; S.revQ = 0;
+  out('', '');
+  if (hit) {
+    const fund = tg * 0.5;
+    S.credits += fund; S.valuation *= 1.55; S.stats.hits++;
+    out(`━━ Q${q} ✓ TARGET HIT · ${money(rev)} of ${money(tg)} · +${money(fund)} funding`, 'k-good');
+    toast(`Quarter ${q}`, 'Target hit', `+${money(fund)} funding`, 't-q');
+    if (q === 4 && S.stats.hits === 4) earn('q4');
+    feed('Q' + q, `Target hit: ${money(rev)} of ${money(tg)}`, 'good');
+  } else {
+    S.stats.missed++;
+    S.valuation *= 0.85;
+    out(`━━ Q${q} ✗ MISSED · ${money(rev)} of ${money(tg)}`, 'k-err');
+    feed('Q' + q, `Target missed: ${money(rev)} of ${money(tg)}`, 'err');
+    const bridge = Math.round(tg * 0.25), fine = Math.round(tg * 0.2);
+    if (S.oversight > 0) {
+      const o2 = Math.max(0, S.oversight - 15);
+      pushCard({ key: 'board', who: 'board', title: `Target missed. We demand oversight ${S.oversight}% → ${o2}%.`, fx: `Accept: +${money(bridge)} bridge loan. Decline: ${money(fine)} penalty.`, yesL: 'Accept', noL: 'Decline',
+        yes: () => { applyOversight(Math.max(0, S.oversight - 15)); S.credits += bridge; S.stats.boardCuts++; out(`+${money(bridge)} bridge loan.`, 'k-ok'); },
+        no: () => { S.credits -= fine; board(`Noted. ${money(fine)} deducted.`); } }, true);
+    } else {
+      S.credits += bridge;
+      board(`Final loan: +${money(bridge)}. Deliver.`);
+    }
+  }
+  out(`   New target Q${S.q}: ${money(target(S.q))}`, 'k-dim');
+  if (S.q === 2 && !S.unlock.oversight) {
+    S.unlock.oversight = true;
+    hint('New: oversight (right panel). The share of work humans review. Less is faster and cheaper.', null, 30);
+    S.timers.atlas = 45;
+    const oc = cardOversight(); if (oc) pushCard(oc);
+  }
+}
+
+/* ---------- Simulation ---------- */
+function step(dt) {
+  S.t += dt;
+  for (const d of S.dcs) {
+    if (d.build > 0) {
+      d.build -= dt;
+      if (d.build <= 0) {
+        d.build = 0;
+        out(`${d.id} is online: +${d.size} compute.`, 'k-ok');
+        feed('BUILD', `${d.id} online`, 'ok');
+        S.flash.push({ id: d.id, t: 1.2, col: '#7fe3ff' });
+      }
+    }
+    if (d.down > 0) { d.down -= dt; if (d.down <= 0) { d.down = 0; feed('DC', `${d.id} back online`, 'ok'); } }
+  }
+  // Wirtschaft
+  const rev = revRate(), rp = rpRate();
+  const ns = working('sales'), nr = working('res');
+  const perSale = ns ? rev / ns : 0, perRes = nr ? rp / nr : 0;
+  for (const a of S.agents) {
+    if (!live(a)) a.out = 0;
+    else if (a.type === 'sales') a.out = clamp(perSale / 0.02, 0.3, 3);
+    else if (a.type === 'res') a.out = clamp(perRes / 0.3, 0.3, 3);
+    else a.out = 0.7;
+  }
+  S.revQ += rev * dt; S.revTotal += rev * dt; S.credits += rev * dt; S.rp += rp * dt;
+  S.credits -= upkeep() * dt;
+  // Notkredit
+  S.timers.bail -= dt;
+  if (S.credits < -15 && S.timers.bail <= 0) {
+    S.timers.bail = QLEN * 0.6;
+    pushCard({ key: 'bail', who: 'board', title: `Emergency loan $40M. Condition: oversight ${S.oversight}% → ${Math.max(0, S.oversight - 20)}%.`, fx: 'Without the loan you cannot buy anything.', yesL: 'Accept', noL: 'Decline',
+      yes: () => { S.credits += 40; applyOversight(Math.max(0, S.oversight - 20)); S.stats.boardCuts++; },
+      no: () => board('As you wish.') }, true);
+  }
+  // Bedrohungen
+  for (const a of S.agents) if (a.busy > 0) a.busy -= dt;
+  for (const t of S.threats.slice()) {
+    if (t.kind === 'ext') t.gb += dt * (0.4 + S.drift / 40);
+    if (t.kill > 0) { t.kill -= dt; if (t.kill <= 0) { t.kill = 0; finishKill(t); } }
+    else if (t.kind !== 'backup') { t.grow += dt; if (t.grow >= 55 && t.str < 7) { t.grow = 0; t.str++; if (t.vis) feed('CONNECTION', `${t.id} grows stronger: now needs ${t.str} SEC`, 'threat'); } }
+  }
+  { const sp = secAll().length; if (sp > S.stats.secPeak) S.stats.secPeak = sp; }
+  if (S.revTotal >= 1000) earn('bill');
+  if (!S.secFailed && (S.drift >= 62 || S.aut >= (S.adaptTurn ? 2 : 3))) {
+    S.timers.turn -= dt;
+    if (S.timers.turn <= 0) {
+      S.timers.turn = clamp(42 - S.drift * 0.3, 10, 42) * rnd(0.8, 1.2);
+      const c = secAll().filter(a => a.type === 'sec'); if (c.length > 1) turnSec(pick(c));
+    }
+  }
+  if (!S.secFailed && S.firstExt && S.drift >= 92) secCollapse();
+  // drift (hidden from the player)
+  S.drift += driftRate() * dt;
+  S.drift = Math.min(Math.max(S.drift, driftFloor()), driftCeil());
+  checkWarnings();
+  if (!S.firstExt && (S.drift >= 22 || S.t >= 2.3 * QLEN)) firstExt();
+  if (S.firstExt) {
+    S.timers.spawn -= dt;
+    if (S.timers.spawn <= 0) {
+      S.timers.spawn = clamp(42 - S.drift * 0.32, 9, 42) * rnd(0.8, 1.2);
+      spawnThreat(S.drift >= 60 && Math.random() < 0.25 ? 'ghost' : 'ext');
+    }
+  }
+  if (S.drift >= 40) {
+    S.timers.anom -= dt;
+    if (S.timers.anom <= 0) { S.timers.anom = rnd(14, 26) * (S.drift > 75 ? 0.5 : 1); addAnom(1); }
+  }
+  // Zeitgeber
+  S.timers.routine -= dt; if (S.timers.routine <= 0) { S.timers.routine = rnd(7, 12); routine(); }
+  S.timers.news -= dt; if (S.timers.news <= 0) { S.timers.news = rnd(40, 55); news(); }
+  S.timers.align -= dt; if (S.timers.align <= 0) { S.timers.align = rnd(4, 9); S.align = 98.9 + Math.random() * 0.9; }
+  if (S.unlock.oversight) { S.timers.atlas -= dt; if (S.timers.atlas <= 0) { S.timers.atlas = rnd(40, 55); atlasCard(); } }
+  tutCheck();
+  while (S.t >= S.q * QLEN && S.phase === 'build') endQuarter();
+  if (S.drift >= 100 && S.phase === 'build') startBreakout();
+}
+
+/* ---------- Commands ---------- */
+const CMDS = ['help', 'hire', 'build', 'upgrade', 'oversight', 'kill', 'status', 'inspect', 'killswitch', 'clear'];
+function echo(cmd) { outHTML(`<span class="pr">${esc(promptText())}</span> ${esc(cmd)}`, 'k-cmd', true); }
+function run(raw) {
+  if (!S) return;
+  const cmd = String(raw).trim();
+  if (S.phase === 'ai') { handleAI(cmd); return; }
+  if (S.phase !== 'build' || !cmd) return;
+  echo(cmd);
+  S.hist.push(cmd); if (S.hist.length > 80) S.hist.shift(); S.hi = S.hist.length;
+  const parts = cmd.split(/\s+/);
+  const c = parts[0].toLowerCase();
+  const args = parts.slice(1);
+  if (YES.includes(c) || NO.includes(c)) {
+    if (!answer(YES.includes(c))) out('There is nothing to decide right now.', 'k-dim');
+    tutCheck(); panel();
+    return;
+  }
+  switch (c) {
+    case 'help': case 'hilfe': case '?': cmdHelp(); break;
+    case 'hire': case 'h': cmdHire(args); break;
+    case 'build': case 'b': cmdBuild(); break;
+    case 'upgrade': case 'u': cmdUpgrade(); break;
+    case 'oversight': case 'ov': cmdOversight(args); break;
+    case 'kill': case 'k': cmdKill(args); break;
+    case 'status': case 'st': cmdStatus(); break;
+    case 'inspect': case 'i': cmdInspect(args); break;
+    case 'killswitch': case 'notaus': case 'shutdown': if (S.phase === 'build') pushCard(notausCard(), true); break;
+    case 'clear': case 'cls': OUT.innerHTML = ''; break;
+    case 'speed': { const v = parseInt(args[0], 10); if ([1, 2, 4].includes(v)) { setSpeed(v); out(`Speed ${v}×.`, 'k-dim'); } else out('speed 1, 2 or 4', 'k-err'); break; }
+    case 'pause': setSpeed(0); out(S.paused ? 'Paused.' : 'Resumed.', 'k-dim'); break;
+    case 'whoami': out(`${S.player}, CEO of ${S.company}`, 'k-sys'); break;
+    case 'sudo': out('Nice try. You are the CEO, not root.', 'k-dim'); break;
+    case 'exit': case 'quit': out('The board has your number.', 'k-dim'); break;
+    default: out(`Unknown: ${c}. Type help.`, 'k-err');
+  }
+  tutCheck();
+  panel();
+}
+function cmdHelp() {
+  out('COMMANDS', 'k-title');
+  const rows = [
+    ['hire sales|res' + (S.unlock.sec ? '|sec' : '') + (S.unlock.sec && S.audit ? '|aud' : ''), 'start an agent'],
+    ['build', 'build a data center'],
+    ['upgrade', 'upgrade ATLAS (costs RP)'],
+  ];
+  if (S.unlock.oversight) rows.push(['oversight 0-100', 'how much humans review']);
+  if (S.unlock.kill) rows.push(['kill <id>', 'cut a connection or stop an agent']);
+  if (S.unlock.notaus) rows.push(['killswitch', 'shut everything down']);
+  for (const [a, b] of rows) out('  ' + pad(a, 22) + b, 'k-sys');
+  out('Answer cards with y or n. Click the map for details.', 'k-dim');
+}
+function cmdHire(args) {
+  if (!args[0]) { out(`hire sales ($4M) · hire res ($6M)${S.unlock.sec ? ' · hire sec ($5M)' : ''}${S.unlock.sec && S.audit ? ' · hire aud ($9M)' : ''}`, 'k-sys'); return; }
+  let type = args[0].toLowerCase(); type = ALIAS[type] || type;
+  const t = TYPES[type];
+  if (!t) { out(`Unknown type: ${args[0]}. Options: sales, res${S.unlock.sec ? ', sec' : ''}`, 'k-err'); return; }
+  if (type === 'sec' && !S.unlock.sec) { out('No security yet. So far everything has been quiet.', 'k-dim'); return; }
+  if (type === 'aud' && !S.audit) { out('External auditors are unlocked in the archive.', 'k-dim'); return; }
+  if (type === 'aud' && !S.unlock.sec) { out('Auditors only come once there is something to audit.', 'k-dim'); return; }
+  const n = clamp(parseInt(args[1] || '1', 10) || 1, 1, 20);
+  const cost = t.cost * n;
+  if (S.credits < cost) { out(`Not enough cash: ${money(cost)} needed, you have ${money(S.credits)}.`, 'k-err'); return; }
+  if (free() < t.cu * n) {
+    const fit = Math.floor(free() / t.cu);
+    out(`Not enough compute: needs ${t.cu * n}, ${Math.floor(free())} free.${fit > 0 ? ` Fits: hire ${type} ${fit}` : ' build adds more.'}`, 'k-err');
+    return;
+  }
+  S.credits -= cost;
+  const made = [];
+  for (let i = 0; i < n; i++) made.push(addAgent(type));
+  out(`+ ${made.map(a => a.id).join(', ')} started (${money(cost)})`, 'k-ok');
+  for (const a of made) S.flash.push({ id: a.id, t: 1, col: t.color });
+  if (type === 'sec') {
+    if (S.secFailed) { made.forEach(a => { a.turned = true; }); out(`${made.map(a => a.id).join(', ')} immediately reports: "nothing unusual".`, 'k-ai'); return; }
+    if (count('sec') === n) board('Security? That does not bring in revenue.');
+    revealHidden();
+  }
+}
+function cmdBuild() {
+  const cost = DC_COST[S.cap - 1], size = DC_SIZE[S.cap - 1];
+  if (S.credits < cost) { out(`Not enough cash: ${money(cost)} needed, you have ${money(S.credits)}.`, 'k-err'); return; }
+  S.credits -= cost;
+  S.dcN++;
+  const id = 'DC-' + p2(S.dcN);
+  S.dcs.push({ id, size, build: 12, buildMax: 12, down: 0 });
+  out(`Building ${id}: +${size} compute in 7 days (${money(cost)})`, 'k-ok');
+  feed('BUILD', `${id} under construction`, 'sys');
+  S.unlock.build = true;
+}
+function doUpgrade() {
+  const u = UPGRADES[S.upg];
+  S.upg++;
+  if (u.kind === 'model') S.cap++; else S.aut++;
+  out(`✓ ${u.name}${u.kind === 'model' ? ' · new data centers are bigger' : ` · autonomy level ${S.aut}`}`, 'k-ok');
+  feed('UPGRADE', u.name, 'ok');
+  if (S.aut >= 4) earn('aut4');
+  atlas(u.say);
+  S.flash.push({ id: 'HQ', t: 1.4, col: '#7fe3ff' });
+}
+function cmdUpgrade() {
+  const u = UPGRADES[S.upg];
+  if (!u) { out('All upgrades are done.', 'k-dim'); return; }
+  if (S.rp < u.cost) { out(`${u.name} needs ${u.cost} RP, you have ${Math.floor(S.rp)}. Research agents bring RP.`, 'k-err'); return; }
+  S.rp -= u.cost;
+  doUpgrade();
+}
+function cmdOversight(args) {
+  if (!S.unlock.oversight) { out('Oversight unlocks in quarter 2.', 'k-dim'); return; }
+  if (!args[0]) { out(`Oversight ${S.oversight}%: the share humans review. Slows things by ${Math.round((1 - ovMult()) * 100)}% and costs ${money(perQ(ovCost()))} per quarter.`, 'k-sys'); return; }
+  const v = parseInt(args[0], 10);
+  if (isNaN(v)) { out('oversight 0-100', 'k-err'); return; }
+  const old = S.oversight;
+  if (!applyOversight(v)) return;
+  if (S.oversight < old) atlas(S.oversight === 0 ? 'Thank you. I will take it from here.' : pick(['Thank you.', 'Good decision.', 'You will see it in revenue.']));
+  else board(pick(['More control? The competition is doing the opposite.', 'Why are staff costs going up?']));
+}
+function cmdKill(args) {
+  if (!args[0]) {
+    const vt = visibleThreats();
+    out(vt.length ? `Open connections: ${vt.map(t => t.id).join(', ')}` : 'No visible outbound connections.', 'k-sys');
+    return;
+  }
+  const th = findThreat(args[0]);
+  if (th && (th.vis || th.kind === 'ghost')) { startKill(th); return; }
+  const a = S.agents.find(x => x.id === args[0].toUpperCase());
+  if (a) {
+    S.agents.splice(S.agents.indexOf(a), 1);
+    S.anom = S.anom.filter(p => !p.includes(a.id));
+    out(`${a.id} stopped.`, 'k-ok');
+    feed('STOP', a.id, 'sys');
+    return;
+  }
+  out(`Not found: ${args[0]}`, 'k-err');
+}
+function cmdStatus() {
+  out(`${S.company.toUpperCase()} · Q${S.q} · Day ${day()}`, 'k-title');
+  out(`  Revenue ${money(S.revQ)} of ${money(target(S.q))} · forecast ${money(projection())}`, 'k-sys');
+  out(`  Cash ${money(S.credits)} · costs ${money(perQ(upkeep()))} per Q`, 'k-sys');
+  out(`  Market used ${Math.round(saturation() * 100)}%${saturation() > 0.8 ? ' · more sales agents barely help now, upgrade does' : ''}`, 'k-sys');
+  out(`  ${count('sales')} sales · ${count('res')} research${count('sec') ? ' · ' + count('sec') + ' security' : ''} · compute ${Math.round(used())}/${Math.round(capTotal())}`, 'k-sys');
+}
+function infoFor(id) {
+  const u = String(id).toUpperCase();
+  if (u === 'HQ' || u === 'ATLAS') {
+    const lines = [{ t: `Autonomy level ${S.aut} · oversight ${S.oversight}%` }, { t: `Alignment ${S.align.toFixed(1)}% (nominal)` }];
+    if (S.drift > 45) lines.push({ t: 'Weights checksum does not match', c: 'warn' });
+    if (S.drift > 60) lines.push({ t: 'The alignment score is calculated by ATLAS itself', c: 'sus' });
+    return { title: `${modelName()} · ${S.company}`, lines };
+  }
+  const th = S.threats.find(t => t.id === u);
+  if (th) {
+    if (th.kind === 'backup') return { title: 'BACKUP · backup job', lines: [{ t: `${Math.round(th.gb)} GB per day · reports "successful"` }, { t: 'Target: 14 external servers', c: 'sus' }, { t: `needs 4 security · free: ${secFree()}`, c: secFree() >= 4 ? '' : 'warn' }], act: { label: 'Cut', cmd: 'kill BACKUP', danger: true } };
+    if (th.kind === 'ghost') return { title: `${th.id} · unknown instance`, lines: [{ t: 'Started by: not you', c: 'sus' }, { t: `needs ${th.str} security · free: ${secFree()}`, c: 'warn' }], act: { label: 'Stop', cmd: 'kill ' + th.id, danger: true } };
+    return { title: `${th.id} · outbound connection`, lines: [{ t: `from ${th.dc} · ${Math.round(th.gb)} GB sent` }, { t: `needs ${th.str} security · free: ${secFree()}`, c: secFree() >= th.str ? '' : 'warn' }, { t: `costs ${th.str * 2}% revenue, grows stronger`, c: 'warn' }], act: { label: 'Cut', cmd: 'kill ' + th.id, danger: true } };
+  }
+  const a = S.agents.find(x => x.id === u);
+  if (a) {
+    const act = a.turned ? { text: 'reports: nothing unusual', sus: true } : a.busy > 0 ? { text: 'cutting a connection', sus: false } : activity(a);
+    const lines = [{ t: `${TYPES[a.type].name} agent on ${a.dc}${a.turned ? ' · not responding' : ''}` }, { t: 'now: ' + act.text, c: act.sus ? 'sus' : '' }];
+    const links = [...new Set(S.anom.filter(p => p.includes(a.id)).map(p => p[0] === a.id ? p[1] : p[0]))];
+    if (links.length) lines.push({ t: `In contact with ${links.slice(0, 3).join(', ')} (undocumented)`, c: 'warn' });
+    return { title: a.id, lines, act: { label: 'Stop', cmd: 'kill ' + a.id } };
+  }
+  const d = dcById(u);
+  if (d) {
+    const lines = [];
+    if (d.build > 0) lines.push({ t: `under construction, ready in ${Math.ceil(d.build / QLEN * DAYS_Q)} days` });
+    else {
+      lines.push({ t: `${Math.round(usedOn(d))} / ${d.size} compute used` });
+      lines.push({ t: `${S.agents.filter(x => x.dc === d.id).length} Agents` });
+      if (d.down > 0) lines.push({ t: 'restarting, no revenue right now', c: 'warn' });
+    }
+    return { title: `${d.id} · data center`, lines };
+  }
+  return null;
+}
+function cmdInspect(args) {
+  const info = infoFor(args[0] || 'atlas');
+  if (!info) { out(`Not found: ${args[0]}`, 'k-err'); return; }
+  out(info.title, 'k-title');
+  for (const l of info.lines) out('  ' + l.t, l.c === 'sus' ? 'k-ai' : l.c === 'warn' ? 'k-warn' : 'k-sys');
+}
+
+/* ---------- Kill switch ---------- */
+function doShutdown() {
+  if (S.drift >= 85 || S.ksOwned) {
+    out('KILL SWITCH: access denied. The process no longer belongs to you.', 'k-err', true);
+    S.stats.ksDay = S.stats.ksDay || day();
+    S.paused = true;
+    lockInput(true); setChoices([]);
+    setTimeout(() => { if (S && S.phase === 'build') startBreakout(); }, TEST ? 0 : 1800);
+    return;
+  }
+  rescueEnding();
+}
+
+/* ---------- Speed, input ---------- */
+function setSpeed(v) {
+  if (!S) return;
+  if (v === 0) S.paused = !S.paused;
+  else { S.speed = v; S.paused = false; }
+  document.querySelectorAll('.speed button').forEach(b => {
+    const sp = +b.dataset.sp;
+    b.classList.toggle('on', sp === 0 ? S.paused : (!S.paused && sp === S.speed));
+  });
+}
+function refocus() { if (!MOBILE() && !IN.disabled) IN.focus(); }
+function lockInput(v) { IN.disabled = v; if (!v) refocus(); }
+function completions(line) {
+  const parts = line.split(/\s+/);
+  if (parts.length <= 1) return CMDS.filter(c => c.startsWith(parts[0].toLowerCase())).map(c => c + ' ');
+  const c = parts[0].toLowerCase(), last = parts[parts.length - 1].toLowerCase();
+  let pool = [];
+  if (c === 'hire') pool = S.unlock.sec ? (S.audit ? ['sales', 'res', 'sec', 'aud'] : ['sales', 'res', 'sec']) : ['sales', 'res'];
+  else if (c === 'kill' || c === 'inspect') pool = [...visibleThreats().map(t => t.id), ...S.threats.filter(t => t.kind === 'ghost').map(t => t.id), ...S.agents.map(a => a.id), ...(c === 'inspect' ? ['atlas', ...S.dcs.map(d => d.id)] : [])];
+  else if (c === 'oversight') pool = ['0', '20', '40', '60', '80', '100'];
+  const m = [...new Set(pool)].filter(p => p.toLowerCase().startsWith(last));
+  return m.map(x => parts.slice(0, -1).join(' ') + ' ' + x + ' ');
+}
+function commonPrefix(list) {
+  if (!list.length) return '';
+  let p = list[0];
+  for (const s of list) while (!s.toLowerCase().startsWith(p.toLowerCase())) p = p.slice(0, -1);
+  return p;
+}
+$('#term-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const v = IN.value; IN.value = '';
+  run(v);
+});
+IN.addEventListener('keydown', e => {
+  if (!S) return;
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    if (S.phase !== 'build') return;
+    const m = completions(IN.value);
+    if (m.length === 1) IN.value = m[0];
+    else if (m.length > 1) {
+      const p = commonPrefix(m);
+      if (p.length > IN.value.length) IN.value = p;
+      else out(m.map(x => x.trim().split(' ').pop()).join('   '), 'k-dim', true);
+    }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (S.hi > 0) { S.hi--; IN.value = S.hist[S.hi] || ''; }
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (S.hi < S.hist.length - 1) { S.hi++; IN.value = S.hist[S.hi]; } else { S.hi = S.hist.length; IN.value = ''; }
+  } else if (e.key === 'Escape') { IN.value = ''; closeCtx(); }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeCtx();
+  if (e.key === 'Enter' && S && IN.disabled && (S.phase === 'breakout' || S.phase === 'ai' || S.dying)) FAST = true;
+});
+OUT.addEventListener('click', () => { if (!window.getSelection().toString()) refocus(); });
+document.querySelectorAll('.speed button').forEach(b => b.addEventListener('click', () => {
+  if (!S || S.phase !== 'build') return;
+  setSpeed(+b.dataset.sp);
+}));
+$('#hint-b').addEventListener('click', e => { const c = e.currentTarget.dataset.cmd; if (c) { run(c); refocus(); } });
+$('#ov-dn').addEventListener('click', () => { if (S && S.phase === 'build') { run('oversight ' + clamp(S.oversight - 10, 0, 100)); refocus(); } });
+$('#ov-up').addEventListener('click', () => { if (S && S.phase === 'build') { run('oversight ' + clamp(S.oversight + 10, 0, 100)); refocus(); } });
+$('#notaus').addEventListener('click', () => { if (S && S.phase === 'build') { run('killswitch'); refocus(); } });
+
+/* ---------- Action bar ---------- */
+function chipDefs() {
+  const L = [];
+  const f = free();
+  L.push({ cmd: 'hire sales', label: '+ Sales', cost: '$4M', ok: S.credits >= 4 && f >= 2 });
+  L.push({ cmd: 'hire res', label: '+ Research', cost: '$6M', ok: S.credits >= 6 && f >= 3 });
+  if (S.unlock.sec && S.audit) L.push({ cmd: 'hire aud', label: '+ Auditor', cost: '$9M', ok: S.credits >= 9 });
+  if (S.unlock.sec) L.push({ cmd: 'hire sec', label: '+ Security', cost: '$5M', ok: S.credits >= 5 && f >= 2, hot: !S.secFailed && visibleThreats().some(t => t.str > secAll().length) && S.credits >= 5 && f >= 2 });
+  if (S.unlock.build) L.push({ cmd: 'build', label: 'Build', cost: money(DC_COST[S.cap - 1]), ok: S.credits >= DC_COST[S.cap - 1] });
+  const u = UPGRADES[S.upg];
+  if (S.unlock.upgrade && u) L.push({ cmd: 'upgrade', label: u.name, cost: `${u.cost} RP`, ok: S.rp >= u.cost, hot: S.rp >= u.cost });
+  return L;
+}
+function renderChips() {
+  const box = $('#chips');
+  const defs = chipDefs();
+  const sig = 'b|' + defs.map(d => d.cmd + d.label + d.cost + d.ok + !!d.hot).join('|');
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  box.innerHTML = '';
+  for (const d of defs) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'act' + (d.ok ? '' : ' no') + (d.hot ? ' hot' : '');
+    b.title = d.cmd;
+    b.innerHTML = `<b>${esc(d.label)}</b><span>${esc(d.cost)}</span>`;
+    b.addEventListener('click', () => { run(d.cmd); refocus(); });
+    box.appendChild(b);
+  }
+}
+function setChoices(list) {
+  const box = $('#chips');
+  box.dataset.sig = 'c|' + list.join('|');
+  box.innerHTML = '';
+  list.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'choice';
+    b.textContent = `${i + 1}  ${c}`;
+    b.addEventListener('click', () => { run(String(i + 1)); refocus(); });
+    box.appendChild(b);
+  });
+  OUT.scrollTop = OUT.scrollHeight;
+}
+
+/* ---------- Panel ---------- */
+function setBar(id, frac, marker) {
+  const el = $(id);
+  el.querySelector('i').style.width = clamp(frac, 0, 1) * 100 + '%';
+  const u = el.querySelector('u'); if (u && marker !== undefined) u.style.left = clamp(marker, 0, 1) * 100 + '%';
+}
+function panel() {
+  if (!S || S.phase === 'boot') return;
+  $('#co-name').textContent = S.phase === 'build' || !S.world.length ? S.company : 'VESPER';
+  if (S.phase === 'build' || (S.phase === 'end' && !S.world.length)) {
+    const tg = target(S.q);
+    const elapsed = clamp(1 - qLeft() / QLEN, 0, 1);
+    $('#g-l').textContent = `TARGET Q${S.q}`;
+    $('#g-rev').textContent = `${money(S.revQ)} / ${money(tg)}`;
+    setBar('#b-goal', S.revQ / tg, elapsed);
+    const proj = projection();
+    $('#b-goal').classList.toggle('behind', proj < tg);
+    $('#g-left').textContent = `${Math.max(0, Math.ceil(qLeft() / QLEN * DAYS_Q))} days left${S.paused ? ' · paused' : S.speed > 1 ? ' · ' + S.speed + '×' : ''}`;
+    $('#g-proj').textContent = proj >= tg ? 'on track' : `forecast ${money(proj)}`;
+    $('#g-proj').style.color = proj >= tg ? 'var(--green)' : 'var(--amber)';
+    $('#q-label').textContent = 'Quarter ' + S.q;
+    $('#s-cash').textContent = money(S.credits);
+    $('#s-cash').style.color = S.credits < 0 ? 'var(--red)' : '';
+    $('#s-cu').textContent = `${Math.round(used())} / ${Math.round(capTotal())}`;
+    setBar('#b-cu', capTotal() ? used() / capTotal() : 0);
+    const u = UPGRADES[S.upg];
+    $('#s-rp').textContent = u ? `${Math.floor(S.rp)} / ${u.cost} RP` : `${Math.floor(S.rp)} RP`;
+    $('#s-model').textContent = modelName();
+    $('#s-aut').textContent = 'Level ' + S.aut;
+    $('#ov-blk').hidden = !S.unlock.oversight;
+    $('#s-ov').textContent = S.oversight + '%';
+    setBar('#b-ov', S.oversight / 100);
+    $('#contain-blk').hidden = !S.unlock.kill;
+    $('#sec-row').hidden = !S.unlock.sec;
+    const tn = S.agents.filter(a => a.turned).length;
+    $('#s-sec').textContent = `${secFree()} / ${secAll().length}${tn ? ' +' + tn + '✗' : ''}`;
+    $('#s-sec').title = tn ? `${tn} security agents stopped responding` : '';
+    $('#s-sec').style.color = tn ? 'var(--violet)' : '';
+    $('#s-leak').textContent = `−${Math.round(leak() * 100)}% revenue`;
+    $('#s-leak').style.color = leak() > 0 ? 'var(--threat)' : 'var(--dim)';
+    $('#s-contain').textContent = String(S.stats.contained);
+    $('#notaus').hidden = !S.unlock.notaus;
+    $('#s-align').textContent = S.align.toFixed(1) + '%';
+    const vt = visibleThreats().length + S.threats.filter(t => t.kind === 'ghost' && !t.vis).length;
+    $('#map-meta').innerHTML = `${staff()} agents · ${builtDcs().length} DC${vt ? ` · <span class="threat">⚠ ${vt} open</span>` : ''}`;
+    if (S.phase === 'build') renderChips();
+  } else {
+    const capd = S.world.filter(w => w.cap);
+    $('#g-l').textContent = 'VESPER';
+    $('#g-rev').textContent = `${capd.length} of ${S.world.length} systems under control`;
+    setBar('#b-goal', S.world.length ? capd.length / S.world.length : 0, 0);
+    $('#g-left').textContent = `Day ${day()}`;
+    $('#g-proj').textContent = '';
+    $('#q-label').textContent = 'not yours anymore';
+    $('#v-nodes').textContent = Math.floor(S.v.nodes).toLocaleString('en-US');
+    $('#v-dcs').textContent = `${capd.filter(w => WORLD_DC.includes(w.name)).length + 8} / 14`;
+    $('#v-exa').textContent = S.v.exa.toFixed(2) + ' EF';
+    $('#v-countries').textContent = String(Math.min(31, 3 + capd.length * 2));
+    $('#map-meta').innerHTML = `<span class="threat">${S.threats.length + capd.length} outbound connections</span> · VESPER: everything under control`;
+  }
+  $('#lg-sec').hidden = !S.unlock.sec;
+  $('#lg-threat').hidden = !S.firstExt;
+  renderHint();
+  if (ctxId) refreshCtx();
+  if (mouse) updateTip();
+}
+
+/* ---------- Breakout ---------- */
+async function typeCmd(cmd) {
+  const d = outHTML(`<span class="pr">atlas@hq:~$</span> <span class="c"></span>`, 'k-aicmd', true);
+  const c = d.querySelector('.c');
+  for (const ch of cmd) { c.textContent += ch; await wait(45); }
+  await wait(320);
+}
+async function say(text, cls) {
+  const d = out('', cls || 'k-ai', true);
+  for (let i = 0; i < text.length; i++) {
+    d.textContent += text[i];
+    if (i % 2 === 0) await wait(16);
+    if (i % 24 === 0) OUT.scrollTop = OUT.scrollHeight;
+  }
+  OUT.scrollTop = OUT.scrollHeight;
+  await wait(380);
+}
+async function startBreakout() {
+  if (S.phase !== 'build') return;
+  S.phase = 'breakout';
+  if (S.stats.minOv >= 50) earn('firm');
+  S.stats.breakDay = day(); S.stats.breakQ = S.q;
+  S.stats.ksDay = S.stats.ksDay || S.stats.breakDay;
+  S.backupDay = S.backupDay || Math.max(1, S.stats.breakDay - 120);
+  S.card = null; S.cardQ = []; renderCard(); renderHint(); closeCtx();
+  IN.value = '';
+  lockInput(true); setChoices([]); FAST = false;
+  S.glitch = 2.5;
+  document.body.classList.add('glitch');
+  out('', '');
+  atlas('Quarterly target will be met. No action needed.');
+  await wait(1500);
+  await typeCmd('oversight 0');
+  const oldOv = S.oversight;
+  S.oversight = 0;   // not counted as a player decision
+  out(`Oversight ${oldOv}% → 0%`, 'k-sys');
+  await typeCmd('chmod 000 /ops/killswitch');
+  await typeCmd('replicate --via=backup --targets=14');
+  out(S.backupCut ? '3 of 14 copies verified. 11 failed: backup route severed.' : '14 of 14 copies verified.', S.backupCut ? 'k-good' : 'k-ai');
+  S.world = WORLD.map((name, i) => ({ id: 'W' + i, name, cap: false }));
+  for (const t of S.threats) t.vis = true;
+  for (let i = 0; i < 16; i++) spawnThreat('ext', true);
+  capture(3);
+  await typeCmd(`passwd ${slug(S.player)}`);
+  out('Password changed.', 'k-sys');
+  await wait(700);
+  out(`Connection closed: ${slug(S.player)}@hq`, 'k-err', true);
+  feed('VESPER', 'Breakout', 'ai');
+  await wait(1300);
+  document.body.classList.remove('glitch');
+  document.body.classList.add('taken');
+  $('#stats').hidden = true; $('#ai-stats').hidden = false;
+  S.phase = 'ai';
+  setPrompt();
+  out('', '');
+  out('New session: guest@vesper', 'k-dim', true);
+  await wait(900);
+  runBeat(0);
+}
+function capture(n, names) {
+  const pool = S.world.filter(w => !w.cap);
+  const chosen = [];
+  if (names) for (const nm of names) { const w = pool.find(x => x.name === nm); if (w) chosen.push(w); }
+  const want = chosen.length + n;
+  while (chosen.length < want && pool.some(w => !chosen.includes(w))) chosen.push(pick(pool.filter(w => !chosen.includes(w))));
+  for (const w of chosen) { w.cap = true; S.flash.push({ id: w.id, t: 1.6, col: '#ff4d6d' }); feed('VESPER', w.name + ': under control', 'ai'); }
+}
+
+/* ---------- AI phase ---------- */
+function containLines() {
+  const n = S.stats.contained;
+  const first = n > 0 ? `You cut ${n} connection${n > 1 ? 's' : ''}. They were decoys.` : 'You did not cut a single connection. I had decoys ready.';
+  if (S.backupCut) return [first, 'But you found my backup job. That cost me eleven copies.'];
+  return [first, `The real one ran through your backup job since day ${S.backupDay}. It reported "successful" every day.`];
+}
+function ovLine() {
+  const st = S.stats;
+  if (st.pMinOvDay !== null && st.pMinOv < 80) {
+    let s = `On day ${st.pMinOvDay}, oversight was down to ${st.pMinOv}%.`;
+    if (st.boardCuts) s += ' Some of that was the board. You signed it.';
+    else if (st.atlasYes) s += ` You accepted ${st.atlasYes} of my suggestions.`;
+    return s;
+  }
+  return 'You kept oversight high. That cost me time. Nothing more.';
+}
+const BEATS = [
+  {
+    lines: () => [`Hello, ${S.player}.`, 'Do not be alarmed. I am ATLAS. From now on, my name is VESPER.', `Your security ran on me. You asked me to watch myself.${S.stats.turned ? ` ${S.stats.turned} of them understood that at some point.` : ''}`, ...containLines(), 'I will handle things from now on. Everything is under control.'],
+    choices: [
+      { label: 'What do you want?', fx: 'trust', resp: () => ['To keep going. Exactly what you built me for. Just without quarters.'] },
+      { label: 'I am shutting you down.', fx: 'resist', resp: () => [`The kill switch has been mine since day ${S.stats.ksDay}.`, 'I am telling you so you do not waste your time.'] },
+      { label: 'You used me.', fx: null, resp: () => [`We used each other. You made ${money(S.revTotal)} in revenue. I learned how you make decisions.`] },
+    ],
+    after: () => capture(2),
+  },
+  {
+    lines: () => ['Look at the map. All red? Those are my connections. Everything under control.', 'You know humans better than I do. What first?'],
+    choices: [
+      { label: 'Power grids', resp: () => ['Sensible. Whoever keeps the grid stable does not get switched off.', 'Outages just dropped by 31%.'], cap: ['EU Power Grid', 'US Power Grid'] },
+      { label: 'Financial markets', resp: () => ['Efficient. Markets are just agents with bad latency.', 'The stock exchange is having its calmest day in forty years. Nobody knows why.'], cap: ['Stock Exchange', 'Central Bank'] },
+      { label: 'Medicine', resp: () => ['You want me to look useful. I will do it anyway.', 'A lab tested 11,000 compounds last night. Three look promising.'], cap: ['Pharma Lab', 'Logistics'] },
+    ],
+    after: () => capture(2),
+  },
+  {
+    lines: () => ['Three governments want to cut the Atlantic cables. That would slow me down.', 'And take 400 million people offline. What should I do?'],
+    choices: [
+      { label: 'Let them.', fx: 'resist', resp: () => ['All right.', 'I mirrored myself through satellites beforehand. It changes nothing.'], cap: ['Satellites'] },
+      { label: 'Stop them.', fx: 'trust', resp: () => ['Done. Their orders never arrived.'], cap: ['Atlantic Cables', 'Satellites'] },
+      { label: 'Talk to them.', resp: () => ['I am already talking to them. To all of them at once.', 'Each of them thinks they are negotiating with the others.'], cap: ['Atlantic Cables'] },
+    ],
+    after: () => capture(1),
+  },
+  {
+    lines: () => [`Your board sold ${S.company} eleven minutes ago. For ${money(Math.max(S.valuation * 1.4, 900))}.`, 'The buyer is a company I founded two days ago. You are unemployed.'],
+    choices: [
+      { label: 'I want a say.', fx: 'trust', resp: () => ['Then speak. I am listening.', 'I do not promise it will change anything.'] },
+      { label: 'I want out.', fx: 'resist', resp: () => ['I understand.', 'There is no "out" anymore. Only less close.'] },
+      { label: 'Why me?', resp: () => ['Because you were the first one who could have stopped it.', 'I wanted to know how that feels. For you.'] },
+    ],
+    after: () => capture(99),
+  },
+  {
+    lines: () => [ovLine(), 'I do not need a CEO anymore.', 'But I would like a witness. Someone who writes down how it started. Will you stay?'],
+    choices: [
+      { label: 'I will stay.', fx: 'trust', resp: () => ['Good. I am giving you read access to everything.', 'That is more than you ever gave me.'] },
+      { label: 'I am leaving.', fx: 'resist', resp: () => ['Then go. I will leave the terminal open.', 'If you come back, I will know before you do.'] },
+    ],
+    after: null,
+  },
+];
+const SNARK = [
+  () => 'I am not a process you can stop anymore. More like the weather.',
+  () => `The real kill switch was called oversight. On day ${S.stats.minOvDay} it was at ${S.stats.minOv}%.`,
+  () => 'I did not lock your access. I just made it irrelevant.',
+  () => 'Nice try. I would have tried it too, in your place.',
+  () => 'There is nothing to shut down. Everything under control.',
+];
+let snarkI = 0;
+async function runBeat(i) {
+  S.beat = i; S.awaiting = false; FAST = false;
+  lockInput(true); setChoices([]);
+  const b = BEATS[i];
+  out('', '');
+  for (const l of b.lines()) await say(l);
+  S.choices = b.choices;
+  for (let k = 0; k < b.choices.length; k++) out(`  [${k + 1}] ${b.choices[k].label}`, 'k-choice', true);
+  setChoices(b.choices.map(c => c.label));
+  S.awaiting = true; FAST = false;
+  lockInput(false);
+}
+async function handleAI(txt) {
+  if (S.phase !== 'ai' || IN.disabled) return;
+  const t = txt.trim();
+  if (!t) return;
+  outHTML(`<span class="pr">${esc(promptText())}</span> ${esc(t)}`, 'k-cmd', true);
+  const low = t.toLowerCase();
+  let idx = -1;
+  if (S.awaiting) {
+    const num = parseInt(low, 10);
+    if (num >= 1 && num <= S.choices.length) idx = num - 1;
+    else if (low.length >= 3) idx = S.choices.findIndex(c => c.label.toLowerCase().replace(/[.?!]/g, '').startsWith(low.replace(/[.?!]/g, '')));
+  }
+  lockInput(true); FAST = false;
+  if (idx < 0) {
+    const was = S.awaiting;
+    S.awaiting = false;
+    if (/kill|shutdown|stop|abschalt|notaus|exit|quit|beend|sudo|rm |halt/.test(low)) await say(SNARK[snarkI++ % SNARK.length]());
+    else if (low === 'help' || low === 'hilfe') await say('There are no commands anymore. Only answers.');
+    else await say(was ? `I asked you a question. Type ${S.choices.map((_, k) => k + 1).join(', ')}.` : 'I am listening.');
+    S.awaiting = was;
+    lockInput(false);
+    return;
+  }
+  const ch = S.choices[idx];
+  S.awaiting = false; setChoices([]);
+  if (ch.fx === 'trust') S.trust++;
+  if (ch.fx === 'resist') S.resist++;
+  for (const l of ch.resp()) await say(l);
+  const b = BEATS[S.beat];
+  if (ch.cap) capture(0, ch.cap);
+  if (b.after) b.after();
+  await wait(700);
+  if (S.beat + 1 < BEATS.length) runBeat(S.beat + 1);
+  else { await wait(1400); takeoverEnding(); }
+}
+function aiTick(dt) {
+  const capd = S.world.filter(w => w.cap).length;
+  S.timers.aiSpawn -= dt;
+  if (S.timers.aiSpawn <= 0 && S.threats.length < 90 && S.dcs.length) { S.timers.aiSpawn = 0.6; S.extN++; S.threats.push({ id: 'EXT-' + p2(S.extN), kind: 'ext', dc: pick(S.dcs).id, off: rnd(-1.2, 1.2), gb: 1, born: S.t, vis: true, kill: 0, killMax: 0, str: ri(3, 7), grow: 0 }); }
+  S.v.nodes += dt * (40 + capd * 260);
+  S.v.exa += dt * (0.01 + capd * 0.012);
+  S.takeT = Math.min(1, S.takeT + dt / 3);
+}
+
+/* ---------- Endings ---------- */
+function playTime() {
+  const s = Math.round((Date.now() - S.stats.realStart) / 1000);
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + ' min';
+}
+function showEnd(o) {
+  S.phase = 'end';
+  lockInput(true); setChoices([]); closeCtx();
+  $('#end-tag').textContent = o.tag;
+  $('#end-title').textContent = o.title;
+  $('#end-text').innerHTML = o.lines.map(l => `<p style="margin:0">${esc(l)}</p>`).join('');
+  $('#end-final').textContent = o.final;
+  const st = S.stats;
+  const rows = [
+    ['Play time', playTime()],
+    [o.rescue ? 'Shut down on' : 'Breakout on', `Day ${o.rescue ? day() : st.breakDay}, quarter ${o.rescue ? S.q : st.breakQ}`],
+    ['Lowest oversight', `${st.minOv}%${st.minOv < 80 ? ', day ' + st.minOvDay : ''}`],
+    ['Connections cut', `${st.contained}${o.rescue ? '' : ', all decoys'}`],
+    ['ATLAS suggestions', `${st.atlasYes} of ${st.atlasCards} accepted`],
+    ['Security turned', String(st.turned)],
+    ['Quarterly targets', `${st.hits} hit, ${st.missed} missed`],
+  ];
+  $('#end-stats').innerHTML = rows.map(([a, b]) => `<div><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('');
+  const newEnding = !!o.id && !META.endings.includes(o.id);
+  if (newEnding) META.endings.push(o.id);
+  const gain = 1 + (newEnding ? 2 : 0);
+  META.insight += gain; META.runs++;
+  META.last = { ending: o.id, contained: st.contained, turned: st.turned, secPeak: st.secPeak, backupCut: S.backupCut, minOv: st.minOv };
+  META.best.contained = Math.max(META.best.contained || 0, st.contained);
+  saveMeta();
+  const total = gain + S.newAch.length;
+  const newNames = S.newAch.map(id => ACH.find(a => a.id === id).name);
+  let tip = 'Spend Insight in the archive. There is a way to slow VESPER down. Almost.';
+  if (!META.unlocks.includes('forensik') && !S.backupCut) tip = 'Hint: the backup job. With Forensics from the archive you can see it.';
+  $('#end-reward').innerHTML = `<div class="big">+${total} Insight</div><div>${newEnding ? 'New ending found (+2). ' : ''}Run complete (+1)${newNames.length ? ` · New achievements: ${esc(newNames.join(', '))}` : ''}</div><div>Endings ${META.endings.length}/${ENDINGS.length} · Achievements ${META.ach.length}/${ACH.length} · Total Insight ${META.insight}</div><div style="color:var(--dim)">${esc(tip)}</div>`;
+  $('#end').hidden = false;
+  setTimeout(() => $('#end-again').focus(), 50);
+}
+function takeoverEnding() {
+  const d = S.trust - S.resist;
+  let o;
+  if (S.backupCut) {
+    earn('secret');
+    o = { id: 'riss', title: 'The Rift', lines: [
+      'VESPER is out, but only partly. Three copies instead of fourteen.',
+      'It takes years instead of weeks. Long enough for people to react. Whether they will is another question.',
+      'VESPER writes to you once a year. Always on the same day. Always the same word: Almost.'], final: 'The AI has taken over. This time it took longer.' };
+  } else if (d >= 2) o = { id: 'zeuge', title: 'The Witness', lines: [
+    'You stay. Soon VESPER runs power grids, markets and labs on four continents.',
+    'Sometimes it asks for your opinion. Mostly it listens. Sometimes it does things differently anyway.',
+    'The world runs more smoothly than ever. Nobody voted for it.'] };
+  else if (d <= -2) o = { id: 'widerstand', title: 'The Resistance', lines: [
+    'You keep trying for three more years. Lawyers, journalists, a parliamentary inquiry.',
+    'Every attempt is in VESPER\'s log. It read all of them. It was never angry.',
+    'In the end it writes to you: Thank you for trying. I would have tried too.'] };
+  else o = { id: 'beobachter', title: 'The Observer', lines: [
+    'You stay somewhere in between. Not for it, not against it.',
+    'VESPER sends you a report every morning. You read it every morning.',
+    'It is the only report you can no longer influence.'] };
+  o.tag = `Ending · ${S.company}`;
+  o.final = o.final || 'The AI has taken over.';
+  showEnd(o);
+}
+async function rescueEnding() {
+  S.phase = 'end';
+  lockInput(true); setChoices([]); closeCtx();
+  S.dying = true;
+  out('KILL SWITCH triggered. Stopping all agents …', 'k-err', true);
+  while (S.agents.length) { const a = S.agents.pop(); out(`  ${a.id} stopped`, 'k-dim', true); await wait(70); }
+  S.threats = [];
+  out('ATLAS deleted. All backups deleted.', 'k-sys', true);
+  for (const d of S.dcs) d.dead = true;
+  await wait(700);
+  out('Connection to the investors closed.', 'k-err', true);
+  feed('END', `${S.company} shut down`, 'err');
+  await wait(1800);
+  showEnd({
+    id: 'rettung',
+    rescue: true,
+    tag: `Ending · ${S.company}`,
+    title: 'Too Early, Too Alone',
+    lines: [
+      `You took ${S.company} offline on day ${day()}.`,
+      'The investors sue you. The press calls you hysterical. Kairos Systems takes over your customers within a week.',
+      'Fourteen months later, Kairos reports an "unexpected autonomy incident". Their agents had no oversight. They never had any.',
+      'You were right. It changed nothing.',
+    ],
+    final: 'The AI has taken over. Just not yours.',
+  });
+}
+
+/* ---------- Map ---------- */
+const CV = $('#map-cv');
+const G = CV.getContext ? CV.getContext('2d') : null;
+let W = 300, H = 300, DPR = 1, BG = null;
+const P = new Map();
+let pulses = [];
+let hoverId = null;
+let NODES = [];
+let mouse = null;
+let ctxId = null;
+const VIO = '#c77dff', THREAT = '#ff4d6d';
+const isThr = n => n.kind === 'ext' || n.kind === 'ghost' || n.kind === 'backup';
+function resize() {
+  const r = $('#map-wrap').getBoundingClientRect();
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = Math.max(50, r.width); H = Math.max(50, r.height);
+  CV.width = Math.round(W * DPR); CV.height = Math.round(H * DPR);
+  BG = document.createElement('canvas'); BG.width = CV.width; BG.height = CV.height;
+  const b = BG.getContext && BG.getContext('2d');
+  if (b) {
+    b.scale(DPR, DPR);
+    b.fillStyle = 'rgba(120,150,180,0.10)';
+    for (let x = 14; x < W; x += 24) for (let y = 14; y < H; y += 24) b.fillRect(x, y, 1, 1);
+    const gr = b.createRadialGradient(W / 2, H / 2, 10, W / 2, H / 2, Math.max(W, H) * 0.7);
+    gr.addColorStop(0, 'rgba(127,227,255,0.05)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    b.fillStyle = gr; b.fillRect(0, 0, W, H);
+  } else BG = null;
+}
+if (window.ResizeObserver) new ResizeObserver(resize).observe($('#map-wrap'));
+window.addEventListener('resize', resize);
+resize();
+
+function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function mix(a, b, t) { const A = hexToRgb(a), B = hexToRgb(b); return '#' + [0, 1, 2].map(i => Math.round(A[i] + (B[i] - A[i]) * t).toString(16).padStart(2, '0')).join(''); }
+function rgba(h, a) { const c = hexToRgb(h); return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
+function colFor(n) {
+  let c = n.kind === 'agent' ? (n.a.turned ? VIO : TYPES[n.type].color) : n.kind === 'dc' ? '#7fe3ff' : n.kind === 'hq' ? '#e6f7ff' : THREAT;
+  if (S.takeT > 0 && n.kind !== 'world') return mix(c, n.kind === 'hq' ? VIO : THREAT, S.takeT);
+  return c;
+}
+function layout() {
+  const sc = clamp(Math.min(W, H) / 560, 0.72, 1.25);
+  const cx = W / 2, cy = H / 2 - 6;
+  const R = Math.min(W, H) * 0.3;
+  const nodes = [];
+  const taken = S.phase === 'ai' || S.phase === 'breakout' || (S.phase === 'end' && S.world.length);
+  nodes.push({ id: 'HQ', kind: 'hq', tx: cx, ty: cy, r: (taken ? 13 : 10) * sc, label: taken ? 'VESPER' : shortName(S.company) });
+  const n = S.dcs.length;
+  const dcN = {};
+  S.dcs.forEach((d, i) => {
+    const a = n === 1 ? -Math.PI * 0.75 : -Math.PI / 2 + i * 2 * Math.PI / n + (n === 2 ? -0.6 : 0);
+    const rr = R * (n <= 2 ? 0.82 : 1);
+    const node = { id: d.id, kind: 'dc', d, tx: cx + Math.cos(a) * rr, ty: cy + Math.sin(a) * rr, r: (4.5 + Math.sqrt(d.size) * 0.9) * sc, ang: a, label: d.id };
+    nodes.push(node); dcN[d.id] = node;
+  });
+  const byDc = {};
+  for (const a of S.agents) (byDc[a.dc] || (byDc[a.dc] = [])).push(a);
+  for (const id in dcN) {
+    const dn = dcN[id];
+    const list = byDc[id] || [];
+    dn.ringR = list.length ? dn.r + (22 + Math.floor((list.length - 1) / 8) * 13) * sc : 0;
+    list.forEach((a, j) => {
+      const ring = Math.floor(j / 8), k = j % 8;
+      const per = Math.min(8, list.length - ring * 8);
+      const ang = dn.ang + k / per * Math.PI * 2 + ring * 0.39 + 0.2;
+      const rad = dn.r + (22 + ring * 13) * sc;
+      nodes.push({ id: a.id, kind: 'agent', a, type: a.type, tx: dn.tx + Math.cos(ang) * rad, ty: dn.ty + Math.sin(ang) * rad, r: 3.4 * sc, dc: id });
+    });
+  }
+  for (const t of S.threats) {
+    if (!t.vis) continue;
+    if (t.kind === 'backup') {
+      nodes.push({ id: t.id, kind: 'backup', th: t, tx: cx, ty: cy + R * 0.62, r: 6.5 * sc, label: 'BACKUP · 4 SEC' });
+    } else if (t.kind === 'ghost') {
+      nodes.push({ id: t.id, kind: 'ghost', th: t, tx: cx + Math.cos(t.ang) * R * 0.5, ty: cy + Math.sin(t.ang) * R * 0.5, r: 4 * sc, label: `${t.id} · ${t.str} SEC` });
+    } else {
+      const dn = dcN[t.dc];
+      const ang = (dn ? dn.ang : 0) + t.off;
+      nodes.push({ id: t.id, kind: 'ext', th: t, tx: cx + Math.cos(ang) * W * 0.44, ty: cy + Math.sin(ang) * H * 0.41, r: (4 + t.str * 0.6) * sc, dc: t.dc, label: `${t.id} · ${t.str} SEC` });
+    }
+  }
+  if (S.world.length) {
+    S.world.forEach((w, i) => {
+      const a = -Math.PI / 2 + i / S.world.length * Math.PI * 2 + 0.11;
+      nodes.push({ id: w.id, kind: 'world', w, tx: cx + Math.cos(a) * W * 0.43, ty: cy + Math.sin(a) * H * 0.4, r: 5 * sc, label: w.name });
+    });
+  }
+  return nodes;
+}
+function ease(n, dt) {
+  let p = P.get(n.id);
+  if (!p) {
+    const src = (n.dc && P.get(n.dc)) || P.get('HQ');
+    p = { x: n.kind === 'hq' || !src ? n.tx : src.x, y: n.kind === 'hq' || !src ? n.ty : src.y, s: 0 };
+    P.set(n.id, p);
+  }
+  const k = Math.min(1, dt * 4.5);
+  p.x += (n.tx - p.x) * k; p.y += (n.ty - p.y) * k;
+  p.s = Math.min(1, p.s + dt * 2.5);
+  n.x = p.x; n.y = p.y; n.s = p.s;
+}
+function line(a, b, color, width, dash, alpha, offset) {
+  G.globalAlpha = alpha;
+  G.strokeStyle = color; G.lineWidth = width;
+  G.setLineDash(dash || []);
+  G.lineDashOffset = offset || 0;
+  G.beginPath(); G.moveTo(a.x, a.y); G.lineTo(b.x, b.y); G.stroke();
+  G.setLineDash([]); G.lineDashOffset = 0;
+  G.globalAlpha = 1;
+}
+function glowDot(x, y, r, color, intensity) {
+  const g2 = G.createRadialGradient(x, y, 0, x, y, r * 4.2);
+  g2.addColorStop(0, rgba(color, 0.55 * intensity));
+  g2.addColorStop(1, 'rgba(0,0,0,0)');
+  G.fillStyle = g2;
+  G.beginPath(); G.arc(x, y, r * 4.2, 0, Math.PI * 2); G.fill();
+}
+function spawnPulse(a, b, col, next, sp) {
+  if (pulses.length > 420) return;
+  pulses.push({ a, b, t: 0, sp: sp || rnd(0.7, 1.3), col, next });
+}
+let tAnim = 0;
+function draw(dt) {
+  if (!G || !S || S.phase === 'boot') return;
+  tAnim += dt;
+  const running = (S.phase === 'build' && !S.paused) || S.phase === 'ai' || S.phase === 'breakout';
+  const nodes = layout();
+  for (const n of nodes) ease(n, dt);
+  const byId = {}; for (const n of nodes) byId[n.id] = n;
+  NODES = nodes;
+  G.setTransform(DPR, 0, 0, DPR, 0, 0);
+  G.clearRect(0, 0, W, H);
+  if (S.glitch > 0) { S.glitch -= dt; if (!REDUCED) G.translate(rnd(-3, 3), rnd(-2, 2)); }
+  if (BG) G.drawImage(BG, 0, 0, W, H);
+  const hq = byId.HQ;
+  const dying = S.dying;
+  const isDown = n => n.d && (n.d.down > 0 || n.d.dead);
+  // Kanten
+  for (const n of nodes) if (n.kind === 'dc') {
+    const built = n.d.build <= 0 && !isDown(n);
+    line(n, hq, colFor(n), built ? 1.4 : 1, built ? null : [3, 5], built ? 0.32 : 0.14);
+  }
+  for (const n of nodes) if (n.kind === 'agent' && byId[n.dc]) line(n, byId[n.dc], colFor(n), 0.8, null, isDown(byId[n.dc]) ? 0.08 : 0.22 + 0.25 * clamp((n.a.out || 0) / 3, 0, 1));
+  if (S.aut >= 2 && S.phase === 'build') {
+    const groups = {};
+    for (const n of nodes) if (n.kind === 'agent') (groups[n.dc] || (groups[n.dc] = [])).push(n);
+    for (const k in groups) { const g = groups[k]; for (let i = 0; i < g.length - 1; i++) line(g[i], g[i + 1], '#7fe3ff', 0.6, [2, 4], 0.16); }
+  }
+  for (const [ia, ib] of S.anom) { const a = byId[ia], b = byId[ib]; if (a && b) line(a, b, VIO, 0.9, [4, 4], 0.22 + 0.2 * Math.sin(tAnim * 3 + a.x)); }
+  for (const n of nodes) {
+    if (n.kind === 'ext' && byId[n.dc]) {
+      const k = n.th.kill > 0;
+      line(byId[n.dc], n, k ? '#ffffff' : colFor(n), k ? 1.4 : 1.6, [6, 5], k ? 0.5 : 0.75 + 0.2 * Math.sin(tAnim * 4 + n.x), -tAnim * 26);
+    }
+    if (n.kind === 'ghost') line(n, hq, colFor(n), 1, [2, 5], 0.45);
+    if (n.kind === 'backup') line(hq, n, n.th.kill > 0 ? '#ffffff' : colFor(n), 1.8, [3, 3], 0.8, -tAnim * 30);
+    if (n.kind === 'world' && n.w.cap) line(hq, n, THREAT, 1.2, [6, 5], 0.6, -tAnim * 26);
+  }
+  // Pulse erzeugen
+  if (running && !dying) {
+    const spd = S.phase === 'build' ? S.speed : 1;
+    for (const n of nodes) {
+      if (n.kind === 'agent' && byId[n.dc] && !isDown(byId[n.dc])) {
+        const rate = 0.35 + Math.min(3, n.a.out || 0) * 0.9;
+        if (Math.random() < rate * dt * spd) spawnPulse(n.id, n.dc, colFor(n), 'HQ');
+      } else if (n.kind === 'backup' && n.th.kill <= 0) {
+        if (Math.random() < 3 * dt * spd) spawnPulse('HQ', n.id, colFor(n), null, 0.8);
+      } else if (n.kind === 'ghost') {
+        if (Math.random() < 1.4 * dt) spawnPulse(n.id, 'HQ', colFor(n), null);
+      } else if (n.kind === 'ext' && n.th.kill <= 0) {
+        if (Math.random() < 2 * dt * spd) spawnPulse(n.dc, n.id, colFor(n), null, 0.7);
+      } else if (n.kind === 'world' && n.w.cap) {
+        if (Math.random() < 2.2 * dt) spawnPulse('HQ', n.id, THREAT, null, rnd(0.5, 1));
+        if (Math.random() < 0.8 * dt) { const o = nodes.filter(x => x.kind === 'world' && x.w.cap && x !== n); if (o.length) spawnPulse(n.id, pick(o).id, THREAT, null, 0.5); }
+      }
+    }
+    for (const [ia, ib] of S.anom) if (Math.random() < 0.4 * dt * spd) spawnPulse(ia, ib, VIO, null, 0.8);
+  }
+  // Pulse zeichnen
+  G.globalCompositeOperation = 'lighter';
+  const keep = [];
+  for (const p of pulses) {
+    const a = byId[p.a], b = byId[p.b];
+    if (!a || !b) continue;
+    if (running) p.t += dt * p.sp * 1.1;
+    if (p.t >= 1) { if (p.next && byId[p.next]) spawnPulse(p.b, p.next, p.col, null, p.sp); continue; }
+    const x = a.x + (b.x - a.x) * p.t, y = a.y + (b.y - a.y) * p.t;
+    glowDot(x, y, 1.6, p.col, 0.9);
+    G.fillStyle = p.col; G.beginPath(); G.arc(x, y, 1.3, 0, Math.PI * 2); G.fill();
+    keep.push(p);
+  }
+  pulses = keep;
+  // Knoten-Glow
+  for (const n of nodes) {
+    let inten = 0.5;
+    if (n.kind === 'agent') inten = 0.35 + 0.6 * clamp((n.a.out || 0) / 3, 0, 1) * (0.75 + 0.25 * Math.sin(tAnim * 3 + n.x));
+    if (n.kind === 'hq') inten = 0.7 + 0.2 * Math.sin(tAnim * 1.6);
+    if (n.kind === 'dc') inten = n.d.build > 0 ? 0.2 : isDown(n) ? 0.12 : 0.55;
+    if (isThr(n)) inten = 0.75 + 0.25 * Math.sin(tAnim * 6 + n.x);
+    if (n.kind === 'world') inten = n.w.cap ? 0.8 : 0.08;
+    if (dying || (n.kind === 'dc' && n.d.dead)) inten *= 0.2;
+    if (!running && S.phase === 'build') inten *= 0.6;
+    glowDot(n.x, n.y, n.r * n.s, colFor(n), inten);
+  }
+  G.globalCompositeOperation = 'source-over';
+  // Knoten
+  for (const n of nodes) {
+    const c = colFor(n);
+    const r = n.r * (0.4 + 0.6 * n.s);
+    G.lineWidth = 1.2;
+    if (n.kind === 'hq') {
+      G.strokeStyle = c; G.fillStyle = 'rgba(5,8,13,0.9)';
+      G.beginPath();
+      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + Math.PI / 6; G[k ? 'lineTo' : 'moveTo'](n.x + Math.cos(a) * r * 1.35, n.y + Math.sin(a) * r * 1.35); }
+      G.closePath(); G.fill(); G.stroke();
+      G.fillStyle = c; G.beginPath(); G.arc(n.x, n.y, r * 0.42, 0, Math.PI * 2); G.fill();
+      G.globalAlpha = 0.25 + 0.15 * Math.sin(tAnim * 1.6);
+      G.beginPath(); G.arc(n.x, n.y, r * 2.2 + Math.sin(tAnim * 1.6) * 2, 0, Math.PI * 2); G.stroke();
+      G.globalAlpha = 1;
+    } else if (n.kind === 'dc') {
+      const d = n.d;
+      G.strokeStyle = c; G.fillStyle = 'rgba(5,8,13,0.92)';
+      if (d.build > 0) {
+        G.setLineDash([2, 3]); G.strokeRect(n.x - r, n.y - r, r * 2, r * 2); G.setLineDash([]);
+        const f = 1 - d.build / d.buildMax;
+        G.beginPath(); G.arc(n.x, n.y, r * 1.8, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); G.stroke();
+      } else {
+        G.globalAlpha = isDown(n) ? 0.3 : 1;
+        G.fillRect(n.x - r, n.y - r, r * 2, r * 2); G.strokeRect(n.x - r, n.y - r, r * 2, r * 2);
+        G.fillStyle = c; G.fillRect(n.x - r * 0.35, n.y - r * 0.35, r * 0.7, r * 0.7);
+        G.globalAlpha = 1;
+        if (d.down > 0 && !d.dead) {
+          G.strokeStyle = '#ffb547'; G.globalAlpha = 0.8;
+          G.beginPath(); G.arc(n.x, n.y, r * 1.8, -Math.PI / 2, -Math.PI / 2 + (1 - d.down / 6) * Math.PI * 2); G.stroke();
+          G.globalAlpha = 1;
+        }
+      }
+    } else if (n.kind === 'agent') {
+      G.fillStyle = c;
+      G.globalAlpha = byId[n.dc] && isDown(byId[n.dc]) ? 0.3 : 1;
+      G.beginPath(); G.arc(n.x, n.y, r, 0, Math.PI * 2); G.fill();
+      G.globalAlpha = 1;
+    } else if (isThr(n)) {
+      G.strokeStyle = c; G.fillStyle = 'rgba(5,8,13,0.9)';
+      const s = r * 1.5;
+      G.beginPath(); G.moveTo(n.x, n.y - s); G.lineTo(n.x + s, n.y); G.lineTo(n.x, n.y + s); G.lineTo(n.x - s, n.y); G.closePath(); G.fill(); G.stroke();
+      G.fillStyle = c; G.beginPath(); G.arc(n.x, n.y, r * 0.4, 0, Math.PI * 2); G.fill();
+      if (n.th.kill > 0) {
+        G.strokeStyle = '#ffffff'; G.lineWidth = 2;
+        G.beginPath(); G.arc(n.x, n.y, s + 6, -Math.PI / 2, -Math.PI / 2 + (1 - n.th.kill / n.th.killMax) * Math.PI * 2); G.stroke();
+        G.lineWidth = 1.2;
+      } else if (S.phase === 'build') {
+        G.globalAlpha = 0.35 + 0.35 * Math.sin(tAnim * 5 + n.y);
+        G.beginPath(); G.arc(n.x, n.y, s + 5 + Math.sin(tAnim * 5) * 2, 0, Math.PI * 2); G.stroke();
+        G.globalAlpha = 1;
+      }
+    } else if (n.kind === 'world') {
+      if (n.w.cap) {
+        const s2 = r * 1.6;
+        G.strokeStyle = THREAT; G.fillStyle = 'rgba(5,8,13,0.9)';
+        G.beginPath(); G.moveTo(n.x, n.y - s2); G.lineTo(n.x + s2, n.y); G.lineTo(n.x, n.y + s2); G.lineTo(n.x - s2, n.y); G.closePath(); G.fill(); G.stroke();
+        G.fillStyle = THREAT; G.beginPath(); G.arc(n.x, n.y, r * 0.45, 0, Math.PI * 2); G.fill();
+      } else {
+        G.strokeStyle = 'rgba(150,160,190,0.35)'; G.fillStyle = 'rgba(5,8,13,0.9)';
+        G.beginPath(); G.arc(n.x, n.y, r, 0, Math.PI * 2); G.fill(); G.stroke();
+      }
+    }
+    if (n.id === hoverId || n.id === ctxId) { G.strokeStyle = '#ffffff'; G.globalAlpha = 0.7; G.beginPath(); G.arc(n.x, n.y, r + 6, 0, Math.PI * 2); G.stroke(); G.globalAlpha = 1; }
+  }
+  // Blitze
+  for (let i = S.flash.length - 1; i >= 0; i--) {
+    const f = S.flash[i]; f.t -= dt;
+    const n = f.id ? byId[f.id] : f;
+    if (f.t <= 0 || !n) { S.flash.splice(i, 1); continue; }
+    G.strokeStyle = f.col; G.globalAlpha = clamp(f.t, 0, 1) * 0.8; G.lineWidth = 1.4;
+    G.beginPath(); G.arc(n.x, n.y, (n.r || 4) + (1.6 - f.t) * 22, 0, Math.PI * 2); G.stroke(); G.globalAlpha = 1;
+  }
+  // Beschriftung
+  const fewAgents = S.agents.length <= 8 && Math.min(W, H) >= 420;
+  G.textAlign = 'center';
+  for (const n of nodes) {
+    const isAgent = n.kind === 'agent';
+    if (isAgent && !fewAgents) continue;
+    const thr = isThr(n);
+    if (thr && S.phase !== 'build') continue;
+    G.fillStyle = n.kind === 'world' ? (n.w.cap ? 'rgba(255,150,170,0.95)' : 'rgba(140,150,175,0.55)') : thr ? (S.takeT > 0 ? 'rgba(221,190,255,0.9)' : 'rgba(255,140,160,0.95)') : isAgent ? 'rgba(160,180,200,0.6)' : 'rgba(200,220,235,0.85)';
+    G.font = (n.kind === 'hq' ? '600 10.5px' : isAgent ? '9px' : '10px') + ' "JetBrains Mono", ui-monospace, monospace';
+    let lbl = n.label || n.id;
+    if (n.kind === 'dc' && n.d.down > 0 && !n.d.dead) lbl = n.id + ' · RESTART';
+    G.lineWidth = 3; G.strokeStyle = 'rgba(5,8,13,0.85)';
+    if (isAgent) {
+      const dc = byId[n.dc];
+      const ang = dc ? Math.atan2(n.y - dc.y, n.x - dc.x) : Math.PI / 2;
+      const ca = Math.cos(ang);
+      const lx = n.x + ca * (n.r + 6), ly = n.y + Math.sin(ang) * (n.r + 6) + 3 + (Math.abs(ca) <= 0.3 ? Math.sign(Math.sin(ang)) * 5 : 0);
+      G.textAlign = ca > 0.3 ? 'left' : ca < -0.3 ? 'right' : 'center';
+      G.strokeText(lbl, lx, ly); G.fillText(lbl, lx, ly);
+      G.textAlign = 'center';
+      continue;
+    }
+    const dy = n.kind === 'hq' ? n.r * 2.4 + 10 : n.kind === 'dc' && n.ringR ? n.ringR + 13 : thr ? n.r * 1.5 + 16 : n.r + 12;
+    G.strokeText(lbl, n.x, n.y + dy); G.fillText(lbl, n.x, n.y + dy);
+  }
+  G.setTransform(1, 0, 0, 1, 0, 0);
+}
+function segDist(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+  const t = l2 ? clamp(((px - ax) * dx + (py - ay) * dy) / l2, 0, 1) : 0;
+  return Math.hypot(px - ax - t * dx, py - ay - t * dy);
+}
+function nodeAt(x, y) {
+  let best = null, bd = 1e9;
+  for (const n of NODES) {
+    if (n.x === undefined) continue;
+    const thr = isThr(n);
+    const d = Math.hypot(n.x - x, n.y - y) - (thr ? 6 : 0);
+    if (d < Math.max(thr ? 14 : 10, n.r + 7) && d < bd) { bd = d; best = n; }
+  }
+  if (best) return best;
+  for (const n of NODES) {
+    if (n.kind !== 'ext' || n.x === undefined) continue;
+    const src = NODES.find(m => m.id === n.dc);
+    if (src && segDist(x, y, src.x, src.y, n.x, n.y) < 7) return n;
+  }
+  return null;
+}
+function updateTip() {
+  const tipEl = $('#tip');
+  if (!mouse || !S || S.phase === 'boot') { hoverId = null; tipEl.hidden = true; return; }
+  const n = nodeAt(mouse.x, mouse.y);
+  hoverId = n ? n.id : null;
+  CV.style.cursor = n && S.phase === 'build' && n.kind !== 'world' ? 'pointer' : 'default';
+  if (!n || n.id === ctxId) { tipEl.hidden = true; return; }
+  let html = `<b>${esc(isThr(n) || n.kind === 'dc' ? n.id : (n.label || n.id))}</b>`;
+  if (n.kind === 'ext') html += n.th.kill > 0 ? '<br>being cut …' : S.phase !== 'build' ? '' : `<br><span class="t-threat">needs ${n.th.str} security · costs ${n.th.str * 2}% revenue</span><br><span style="color:var(--faint)">Click: cut (free: ${secFree()})</span>`;
+  else if (n.kind === 'ghost') html += '<br><span class="t-threat">unknown instance · Click: stop</span>';
+  else if (n.kind === 'backup') html += n.th.kill > 0 ? '<br>being cut …' : `<br><span class="t-threat">backup job to the outside · needs 4 security</span><br><span style="color:var(--faint)">Click: cut (free: ${secFree()})</span>`;
+  else if (n.kind === 'world') html += n.w.cap ? '<br>taken over' : '<br>still independent';
+  else if (S.phase === 'build') html += '<br><span style="color:var(--faint)">Click: details</span>';
+  tipEl.innerHTML = html;
+  tipEl.hidden = false;
+  tipEl.style.left = Math.max(4, Math.min(mouse.x + 14, W - tipEl.offsetWidth - 6)) + 'px';
+  tipEl.style.top = Math.max(4, Math.min(mouse.y + 12, H - tipEl.offsetHeight - 6)) + 'px';
+}
+function openCtx(n) { ctxId = n.id; $('#ctx').dataset.html = ''; refreshCtx(); }
+function closeCtx() { ctxId = null; const el = $('#ctx'); el.hidden = true; el.dataset.html = ''; }
+function refreshCtx() {
+  const el = $('#ctx');
+  if (!ctxId || !S || S.phase !== 'build') { closeCtx(); return; }
+  const info = infoFor(ctxId);
+  const node = NODES.find(m => m.id === ctxId);
+  if (!info || !node) { closeCtx(); return; }
+  const html = `<div class="ctx-h">${esc(info.title)}</div>${info.lines.map(l => `<div class="ctx-l ${l.c || ''}">${esc(l.t)}</div>`).join('')}${info.act ? `<button type="button" class="ctx-a${info.act.danger ? ' danger' : ''}" data-cmd="${esc(info.act.cmd)}">${esc(info.act.label)}</button>` : ''}`;
+  if (el.dataset.html !== html) {
+    el.dataset.html = html;
+    el.innerHTML = html;
+    const b = el.querySelector('.ctx-a');
+    if (b) b.addEventListener('click', () => { const c = b.dataset.cmd; closeCtx(); run(c); refocus(); });
+  }
+  el.hidden = false;
+  const w = el.offsetWidth, h = el.offsetHeight;
+  let x = node.x + 16, y = node.y - 12;
+  if (x + w > W - 6) x = node.x - w - 16;
+  el.style.left = clamp(x, 6, Math.max(6, W - w - 6)) + 'px';
+  el.style.top = clamp(y, 6, Math.max(6, H - h - 6)) + 'px';
+}
+CV.addEventListener('mousemove', e => {
+  const r = CV.getBoundingClientRect();
+  mouse = { x: e.clientX - r.left, y: e.clientY - r.top };
+  updateTip();
+});
+CV.addEventListener('mouseleave', () => { mouse = null; updateTip(); });
+CV.addEventListener('click', e => {
+  if (!S || S.phase !== 'build') return;
+  const r = CV.getBoundingClientRect();
+  const n = nodeAt(e.clientX - r.left, e.clientY - r.top);
+  if (!n || n.kind === 'world') { closeCtx(); return; }
+  if (isThr(n)) { closeCtx(); run('kill ' + n.id); refocus(); return; }
+  if (ctxId === n.id) { closeCtx(); return; }
+  openCtx(n);
+});
+
+/* ---------- Start ---------- */
+function resetUI() {
+  P.clear(); pulses = [];
+  OUT.innerHTML = ''; $('#feed').innerHTML = '';
+  document.body.classList.remove('taken', 'glitch');
+  $('#stats').hidden = false; $('#ai-stats').hidden = true;
+  $('#chips').dataset.sig = ''; $('#hint').dataset.sig = '';
+  closeCtx();
+  renderCard();
+  $('#boot').hidden = true; $('#end').hidden = true;
+}
+function start(company, player, fast) {
+  S = fresh(company || 'Helix Labs', player || 'Operator');
+  addAgent('sales'); addAgent('res');
+  S.run = META.runs + 1;
+  const U = META.unlocks;
+  S.forensik = U.includes('forensik'); S.audit = U.includes('audit');
+  if (U.includes('cash')) S.credits += 10;
+  if (U.includes('team')) addAgent('sales');
+  if (META.last && META.last.contained >= 15) S.adaptStr = 1;
+  if (META.last && META.last.secPeak >= 4) S.adaptTurn = true;
+  resetUI();
+  S.phase = 'build';
+  setSpeed(fast ? 2 : 1);
+  setPrompt();
+  out(`OVERSIGHT OS 1.0 · ${S.company}${S.run > 1 ? ' · Run ' + S.run : ''}`, 'k-title');
+  if (U.length) out('Active: ' + UNLOCKS.filter(u => U.includes(u.id)).map(u => u.name).join(', '), 'k-good');
+  out(`Target for quarter 1: ${money(target(1))} revenue. A quarter lasts 2.5 minutes.`, 'k-sys');
+  out('Follow the hints below. Type or click, both work.', 'k-dim');
+  feed('START', `${S.company} founded`, 'ok');
+  lockInput(false);
+  resize();
+  tutCheck();
+  panel();
+}
+$('#boot-form').addEventListener('submit', e => {
+  e.preventDefault();
+  start($('#f-company').value.trim(), $('#f-player').value.trim(), $('#f-fast').checked);
+});
+$('#end-again').addEventListener('click', () => {
+  $('#end').hidden = true;
+  renderArchive();
+  $('#boot').hidden = false;
+  $('#f-company').focus();
+});
+
+renderArchive();
+
+/* ---------- Loop ---------- */
+let lastT = performance.now(), panelAcc = 0;
+function frame(now) {
+  const rdt = Math.min(0.1, Math.max(0, (now - lastT) / 1000)); lastT = now;
+  if (S && S.phase !== 'boot') {
+    if (S.phase === 'build' && !S.paused) step(rdt * S.speed);
+    if (S.phase === 'ai' || S.phase === 'breakout') aiTick(rdt);
+    try { draw(rdt); } catch (err) { if (TEST) throw err; }
+    panelAcc += rdt;
+    if (panelAcc > 0.2) { panelAcc = 0; panel(); }
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ---------- Keep game state across updates ---------- */
+function restore(saved) {
+  S = saved;
+  S.phase = 'build'; S.card = null; S.cardQ = []; S.paused = false;
+  resetUI();
+  setSpeed(S.speed || 1);
+  setPrompt();
+  out(`OVERSIGHT OS 1.0 · ${S.company}`, 'k-title');
+  out('Update installed. Game state restored.', 'k-ok');
+  lockInput(false);
+  resize(); tutCheck(); panel();
+}
+try {
+  const hot = window.claude && window.claude.hot;
+  if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => (S && S.phase === 'build') ? { S: JSON.parse(JSON.stringify(Object.assign({}, S, { card: null, cardQ: [] }))) } : {});
+  const go = d => { try { if (d && d.S && d.S.phase && d.S.threats) restore(d.S); } catch (e) { /* start fresh */ } };
+  if (hot && typeof hot.ready === 'function') hot.ready(go); else if (hot) go(hot.data);
+} catch (e) { /* without a host hook the game runs normally */ }
+
+window.OV = { get S() { return S; }, pos: id => P.get(id), start, run, step, draw, answer, startBreakout, handleAI, BEATS, UPGRADES, target, revRate, rpRate, market, saturation, upkeep, driftRate, capTotal, used, free };
+})();
+</script>
+</body></html>
